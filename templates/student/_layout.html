@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{% block title %}活动加分系统{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="student-body">
+
+<div class="student-shell">
+    {% block content %}{% endblock %}
+</div>
+
+{% if current_student %}
+<nav class="bottom-tabbar">
+    <a href="{{ url_for('student.home') }}" class="{{ 'active' if request.endpoint == 'student.home' }}">
+        <i class="bi bi-house-door"></i><span>首页</span>
+    </a>
+    <a href="{{ url_for('student.ranking') }}" class="{{ 'active' if request.endpoint == 'student.ranking' }}">
+        <i class="bi bi-bar-chart"></i><span>排名</span>
+    </a>
+    <a href="{{ url_for('student.me') }}" class="{{ 'active' if request.endpoint == 'student.me' }}">
+        <i class="bi bi-person-circle"></i><span>我</span>
+        {% if unread_count %}<em class="dot-badge">{{ unread_count }}</em>{% endif %}
+    </a>
+</nav>
+{% endif %}
+
+<div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer" style="z-index:1080;"></div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="d-none" id="flashedMessages">
+        {% for cat, msg in messages %}<div data-cat="{{ cat }}" data-msg="{{ msg }}"></div>{% endfor %}
+    </div>
+    {% endif %}
+{% endwith %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+{% if current_student %}<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

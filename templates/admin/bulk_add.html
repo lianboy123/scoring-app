@@ -1,0 +1,136 @@
+{% extends "admin/base.html" %}
+{% block title %}批量加分 · 加分管理{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1 class="page-title">批量加分</h1>
+        <p class="page-sub">一个活动、相同分值，勾选多名学生一次性录入</p>
+    </div>
+    <a href="{{ url_for('admin.records') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> 返回记录
+    </a>
+</header>
+
+<form method="post" id="bulkForm">
+    <div class="card admin-card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">活动名称</label>
+                    <input class="form-control" name="activity_name" required
+                           placeholder="例如：创新讲座 11·05">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">分值（每人相同）</label>
+                    <input class="form-control" name="points" type="number" step="0.01" min="0" max="99.99"
+                           required placeholder="如 0.5">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">学期</label>
+                    <input class="form-control" name="semester" value="{{ current_sem }}" required>
+                </div>
+            </div>
+            <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" name="overwrite" id="overwriteCheck">
+                <label for="overwriteCheck" class="form-check-label">
+                    覆盖已有记录（默认跳过已存在同活动的学生）
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card admin-card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h2 class="h6 mb-0">选择学生 <span class="text-muted small" id="selectedHint">已选 0 人</span></h2>
+                <div class="d-flex gap-2">
+                    <input type="text" id="filterBox" class="form-control form-control-sm"
+                           placeholder="输入学号/姓名过滤" style="width:200px;">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllBtn">
+                        全选（过滤后）
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearAllBtn">
+                        清空
+                    </button>
+                </div>
+            </div>
+
+            {% if students %}
+            <div class="student-grid">
+                {% for s in students %}
+                <label class="student-chip" data-q="{{ s.student_no }} {{ s.name }}">
+                    <input type="checkbox" name="student_ids" value="{{ s.id }}" class="form-check-input stu-cb">
+                    <span class="chip-no">{{ s.student_no }}</span>
+                    <span class="chip-name">{{ s.name }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state py-4">
+                <div class="empty-emoji">📋</div>
+                <p class="text-muted">还没有学生名单，请先到「学生名单」页面导入或添加。</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if students %}
+    <div class="d-flex justify-content-end mt-3 sticky-bottom-bar">
+        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+            <i class="bi bi-check2-circle"></i> 给 <span id="submitCount">0</span> 位学生加分
+        </button>
+    </div>
+    {% endif %}
+</form>
+
+<script>
+(function () {
+    var cbs   = document.querySelectorAll('.stu-cb');
+    var chips = document.querySelectorAll('.student-chip');
+    var filter = document.getElementById('filterBox');
+    var hint   = document.getElementById('selectedHint');
+    var submitBtn = document.getElementById('submitBtn');
+    var submitCount = document.getElementById('submitCount');
+
+    function refreshCount() {
+        var n = 0;
+        cbs.forEach(function (c) { if (c.checked) n++; });
+        if (hint) hint.textContent = '已选 ' + n + ' 人';
+        if (submitBtn) {
+            submitBtn.disabled = (n === 0);
+            submitCount.textContent = n;
+        }
+    }
+    cbs.forEach(function (c) { c.addEventListener('change', refreshCount); });
+
+    function applyFilter() {
+        var q = (filter.value || '').trim().toLowerCase();
+        chips.forEach(function (ch) {
+            var s = (ch.dataset.q || '').toLowerCase();
+            ch.style.display = (!q || s.indexOf(q) >= 0) ? '' : 'none';
+        });
+    }
+    if (filter) filter.addEventListener('input', applyFilter);
+
+    var allBtn = document.getElementById('selectAllBtn');
+    if (allBtn) allBtn.addEventListener('click', function () {
+        chips.forEach(function (ch) {
+            if (ch.style.display !== 'none') {
+                var cb = ch.querySelector('.stu-cb');
+                if (cb) cb.checked = true;
+            }
+        });
+        refreshCount();
+    });
+
+    var clearBtn = document.getElementById('clearAllBtn');
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+        cbs.forEach(function (c) { c.checked = false; });
+        refreshCount();
+    });
+
+    refreshCount();
+})();
+</script>
+{% endblock %}

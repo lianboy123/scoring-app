@@ -1,0 +1,64 @@
+{% extends "admin/base.html" %}
+{% block title %}管理员 · 加分管理{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1 class="page-title">管理员</h1>
+        <p class="page-sub">所有管理员权限平等，仅主管能新增/删除其他管理员</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#inviteModal"><i class="bi bi-person-plus"></i> 添加管理员</button>
+</header>
+
+<div class="card admin-card">
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0 align-middle">
+            <thead><tr><th>用户名</th><th>角色</th><th>创建时间</th><th class="text-end">操作</th></tr></thead>
+            <tbody>
+            {% for a in admins %}
+            <tr>
+                <td>{{ a.username }}{% if a.id == current_user.id %} <span class="text-muted small">（你）</span>{% endif %}</td>
+                <td>
+                    {% if a.is_super %}<span class="badge bg-primary">主管</span>
+                    {% else %}<span class="badge bg-secondary">管理员</span>{% endif %}
+                </td>
+                <td class="small text-muted">{{ a.created_at.strftime('%Y-%m-%d') }}</td>
+                <td class="text-end">
+                    {% if a.id != current_user.id %}
+                    <form method="post" action="{{ url_for('admin.admins_delete', aid=a.id) }}" class="d-inline"
+                          onsubmit="return confirm('删除管理员 {{ a.username }} ?');">
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="inviteModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <form method="post" action="{{ url_for('admin.admins_invite') }}">
+      <div class="modal-header"><h5 class="modal-title">添加管理员</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">用户名</label>
+          <input class="form-control" name="username" required minlength="3"></div>
+        <div class="mb-3"><label class="form-label">初始密码</label>
+          <input class="form-control" name="password" type="text" required minlength="8">
+          <div class="form-text">告知对方后请提醒其登录后修改</div></div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="is_super" id="isSuperCheck">
+          <label for="isSuperCheck" class="form-check-label">设为主管（可邀请/删除其他管理员）</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-primary">添加</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

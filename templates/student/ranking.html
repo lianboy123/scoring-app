@@ -1,0 +1,72 @@
+{% extends "student/_layout.html" %}
+{% block title %}排名榜 · 活动加分{% endblock %}
+
+{% block content %}
+<header class="mobile-header">
+    <div>
+        <div class="hello">排名榜</div>
+        <div class="muted small">{{ sem }} · 共 {{ n }} 人 · 全员匿名</div>
+    </div>
+</header>
+
+<section class="ranking-wrap">
+    <!-- 前 3 名（金银铜，匿名） -->
+    <div class="podium">
+        {% set rank2 = top3|selectattr('rank','equalto',2)|list|first %}
+        {% set rank1 = top3|selectattr('rank','equalto',1)|list|first %}
+        {% set rank3 = top3|selectattr('rank','equalto',3)|list|first %}
+        <div class="podium-card podium-2 {{ 'podium-empty' if not rank2 }}">
+            <div class="medal">🥈</div>
+            <div class="points">{{ rank2.points if rank2 else '—' }}</div>
+            <div class="label">第 2 名</div>
+        </div>
+        <div class="podium-card podium-1 {{ 'podium-empty' if not rank1 }}">
+            <div class="medal">🥇</div>
+            <div class="points">{{ rank1.points if rank1 else '—' }}</div>
+            <div class="label">第 1 名</div>
+        </div>
+        <div class="podium-card podium-3 {{ 'podium-empty' if not rank3 }}">
+            <div class="medal">🥉</div>
+            <div class="points">{{ rank3.points if rank3 else '—' }}</div>
+            <div class="label">第 3 名</div>
+        </div>
+    </div>
+
+    <!-- 你的位置 -->
+    <div class="you-card">
+        <span class="you-tag">你</span>
+        <div class="you-rank">第 {{ my_rank }} 名 · {{ '%.1f' % (my_points|float) }} 分</div>
+        <div class="you-meta">
+            {% if n > 1 %}
+                超过了 {{ my_percentile }}% 的同学
+            {% else %}
+                暂无可比较数据
+            {% endif %}
+        </div>
+        <div class="you-progress"><span style="width: {{ my_percentile }}%;"></span></div>
+    </div>
+
+    <!-- 分布直方图 -->
+    {% if histogram %}
+    <div class="dist-card">
+        <div class="text-muted small mb-2">全体分数分布</div>
+        {% for b in histogram %}
+        <div class="dist-row {{ 'is-you' if b.is_you }}">
+            <div class="bin-label">{{ b.label }}</div>
+            <div class="bin-bar"><span style="width: {{ b.pct }}%;"></span></div>
+            <div class="bin-count">{{ b.count }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4">
+        <div class="empty-emoji">📊</div>
+        <div class="text-muted">学期还没开始记录加分</div>
+    </div>
+    {% endif %}
+
+    <p class="text-muted small mt-3 text-center">
+        排名榜不显示其他同学的姓名/学号，保护隐私。
+    </p>
+</section>
+{% endblock %}

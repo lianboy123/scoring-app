@@ -1,0 +1,35 @@
+{% extends "admin/base.html" %}
+{% block title %}上传加分 · 加分管理{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1 class="page-title">上传加分文件</h1>
+        <p class="page-sub">支持 .xlsx / .xls / .csv，4 列：<code>学号 / 姓名 / 活动名称 / 分值</code></p>
+    </div>
+</header>
+
+<div class="card admin-card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" id="uploadForm">
+            <div class="mb-3">
+                <label class="form-label">归入学期</label>
+                <input class="form-control" name="semester" value="{{ current_sem }}" required>
+                <div class="form-text">默认是当前学期，必要时可填写历史学期</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">选择文件</label>
+                <input type="file" class="form-control" name="file" accept=".xlsx,.xls,.csv" required>
+            </div>
+            <div class="mb-3 small text-muted">
+                <strong>表头识别（任选其一）：</strong><br>
+                学号 = 学号 / 学生号 / 学生学号 / 学生ID / 账号<br>
+                姓名 = 姓名 / 名字 / 学生姓名<br>
+                活动 = 活动 / 活动名称 / 项目 / 事项 / 加分原因<br>
+                分值 = 分值 / 分数 / 加分 / 得分 / 分
+            </div>
+            <button class="btn btn-primary"><i class="bi bi-cloud-upload"></i> 上传并解析</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

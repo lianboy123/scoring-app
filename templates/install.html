@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}初始化 · 活动加分系统{% endblock %}
+
+{% block content %}
+<div class="install-wrap">
+    <div class="install-card shadow-sm">
+        <div class="text-center mb-4">
+            <div class="brand-badge">活动加分系统</div>
+            <h1 class="h4 mt-3 mb-1">首次部署初始化</h1>
+            <p class="text-muted small mb-0">设置主管账号 + 当前学期，仅出现一次</p>
+        </div>
+
+        <form method="post" autocomplete="off" novalidate>
+            <div class="mb-3">
+                <label class="form-label">主管用户名</label>
+                <input type="text" name="username" class="form-control" required minlength="3"
+                       value="{{ username or '' }}" placeholder="3 个字符以上">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">密码</label>
+                <input type="password" name="password" class="form-control" required minlength="8"
+                       placeholder="至少 8 个字符">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">确认密码</label>
+                <input type="password" name="confirm" class="form-control" required minlength="8">
+            </div>
+            <div class="mb-4">
+                <label class="form-label">当前学期标识</label>
+                <input type="text" name="semester" class="form-control" required
+                       value="{{ semester or '2026-spring' }}" placeholder="例如 2026-spring">
+                <div class="form-text">用于按学期归档加分记录，可在后台随时切换</div>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">完成初始化</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

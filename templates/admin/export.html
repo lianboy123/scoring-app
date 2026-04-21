@@ -1,0 +1,36 @@
+{% extends "admin/base.html" %}
+{% block title %}导出 / 备份 · 加分管理{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <h1 class="page-title">导出 / 备份</h1>
+</header>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card admin-card">
+            <div class="card-body">
+                <h2 class="h6">按学期导出 Excel</h2>
+                <p class="text-muted small">含「加分明细」+「学期汇总（按学生总分）」两张表</p>
+                <form method="get" action="{{ url_for('admin.export_excel') }}" class="d-flex gap-2">
+                    <select class="form-select" name="semester" style="width:auto;">
+                        {% for s in semesters %}
+                        <option value="{{ s }}" {{ 'selected' if s == current_sem }}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-primary"><i class="bi bi-file-earmark-excel"></i> 下载 Excel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card admin-card">
+            <div class="card-body">
+                <h2 class="h6">备份数据库</h2>
+                <p class="text-muted small">下载 <code>scoring.db</code> 原始文件，离线保存。建议每周一次。</p>
+                <a href="{{ url_for('admin.export_db') }}" class="btn btn-outline-primary"><i class="bi bi-database-down"></i> 下载 DB 文件</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

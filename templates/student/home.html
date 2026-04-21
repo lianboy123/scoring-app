@@ -1,0 +1,55 @@
+{% extends "student/_layout.html" %}
+{% block title %}首页 · 活动加分{% endblock %}
+
+{% block content %}
+<header class="mobile-header">
+    <div>
+        <div class="hello">你好，{{ current_student.name }}</div>
+        <div class="muted small">{{ current_student.student_no }} · 学期 {{ sem }}</div>
+    </div>
+    <a href="{{ url_for('student.logout') }}" class="text-muted small"><i class="bi bi-box-arrow-right"></i> 退出</a>
+</header>
+
+<section class="hero-card">
+    <div class="hero-label">本学期总分</div>
+    <div class="hero-total">{{ '%.1f' % (total|float) }}</div>
+    <div class="hero-sub">来自 {{ record_count }} 条加分记录</div>
+</section>
+
+<section class="mt-3 px-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 mb-0 text-muted">最近加分</h2>
+        <a class="small text-primary" href="{{ url_for('student.me') }}">查看全部 →</a>
+    </div>
+    {% if recent %}
+    <div class="record-list">
+        {% for r in recent %}
+        <div class="record-item">
+            <div>
+                <div class="r-name">{{ r.activity_name }}</div>
+                <div class="r-meta">{{ r.created_at.strftime('%Y-%m-%d') }}</div>
+            </div>
+            <div class="r-points">+{{ r.points }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4">
+        <div class="empty-emoji">🎯</div>
+        <div class="text-muted">本学期还没有加分记录</div>
+        <div class="text-muted small">参加活动后由管理员录入</div>
+    </div>
+    {% endif %}
+</section>
+
+<section class="mt-3 px-3">
+    <a href="{{ url_for('student.ranking') }}" class="quick-link">
+        <i class="bi bi-bar-chart"></i>
+        <div>
+            <div class="ql-title">查看专业排名榜</div>
+            <div class="ql-sub">看看自己处于什么位置</div>
+        </div>
+        <i class="bi bi-chevron-right ms-auto"></i>
+    </a>
+</section>
+{% endblock %}

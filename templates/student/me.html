@@ -1,0 +1,69 @@
+{% extends "student/_layout.html" %}
+{% block title %}我的 · 活动加分{% endblock %}
+
+{% block content %}
+<header class="mobile-header">
+    <div>
+        <div class="hello">{{ current_student.name }}</div>
+        <div class="muted small">{{ current_student.student_no }}</div>
+    </div>
+    <a href="{{ url_for('student.logout') }}" class="text-muted small"><i class="bi bi-box-arrow-right"></i> 退出</a>
+</header>
+
+<section class="px-3 mt-2">
+    <form method="get" class="mb-3">
+        <select name="semester" class="form-select" onchange="this.form.submit()">
+            {% for s in semesters %}
+            <option value="{{ s }}" {{ 'selected' if s == sem }}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <div class="hero-card mb-3">
+        <div class="hero-label">{{ sem }} 总分</div>
+        <div class="hero-total">{{ '%.1f' % (total|float) }}</div>
+        <div class="hero-sub">{{ records|length }} 条记录</div>
+    </div>
+
+    <h2 class="h6 mb-2 text-muted">加分明细</h2>
+    {% if records %}
+    <div class="record-list mb-4">
+        {% for r in records %}
+        <div class="record-item">
+            <div>
+                <div class="r-name">{{ r.activity_name }}</div>
+                <div class="r-meta">{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            </div>
+            <div class="r-points">+{{ r.points }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4">
+        <div class="empty-emoji">🗒️</div>
+        <div class="text-muted">该学期暂无加分记录</div>
+    </div>
+    {% endif %}
+
+    <h2 class="h6 mb-2 text-muted mt-4">通知</h2>
+    {% if notifications %}
+    <div class="notif-list mb-5">
+        {% for n in notifications %}
+        <div class="notif-item {{ 'is-unread' if not n.is_read }}">
+            <div class="r-name">{{ n.content }}</div>
+            <div class="r-meta">{{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-3">
+        <div class="text-muted small">暂无通知</div>
+    </div>
+    {% endif %}
+</section>
+
+<script>
+// 进入"我的"自动标记通知已读
+fetch('{{ url_for("student.mark_notifications_read") }}', { method: 'POST' });
+</script>
+{% endblock %}

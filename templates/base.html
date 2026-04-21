@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{% block title %}活动加分系统{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+<div class="page-wrapper">
+    {% block content %}{% endblock %}
+</div>
+
+<div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer" style="z-index:1080;"></div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="d-none" id="flashedMessages">
+        {% for cat, msg in messages %}
+        <div data-cat="{{ cat }}" data-msg="{{ msg }}"></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endwith %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/toast.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

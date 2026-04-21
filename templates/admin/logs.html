@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+{% block title %}操作日志 · 加分管理{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <h1 class="page-title">操作日志</h1>
+</header>
+
+<div class="card admin-card">
+    <div class="card-body p-0">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>时间</th><th>操作员</th><th>动作</th><th>对象</th><th>详情</th></tr></thead>
+            <tbody>
+            {% for log in pagination.items %}
+            <tr>
+                <td class="small text-muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ log.admin.username if log.admin else '—' }}</td>
+                <td><span class="badge bg-primary-soft text-primary">{{ log.action }}</span></td>
+                <td class="small">
+                    {% if log.target_type %}{{ log.target_type }}{% if log.target_id %} #{{ log.target_id }}{% endif %}{% endif %}
+                </td>
+                <td class="small text-muted text-break">{{ log.detail or '' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-4">暂无日志</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if pagination.pages > 1 %}
+<nav class="mt-3">
+    <ul class="pagination pagination-sm justify-content-center">
+        {% for p in pagination.iter_pages() %}
+            {% if p %}
+            <li class="page-item {{ 'active' if p == pagination.page }}">
+                <a class="page-link" href="?page={{ p }}">{{ p }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

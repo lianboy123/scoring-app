@@ -1,0 +1,29 @@
+{% extends "student/_layout.html" %}
+{% block title %}登录 · 活动加分系统{% endblock %}
+
+{% block content %}
+<div class="install-wrap">
+    <div class="install-card shadow-sm">
+        <div class="text-center mb-4">
+            <div class="brand-badge">活动加分</div>
+            <h1 class="h4 mt-3 mb-1">学生登录</h1>
+            <p class="text-muted small mb-0">用学号 + 姓名进入，无需密码</p>
+        </div>
+        <form method="post" autocomplete="off">
+            <div class="mb-3">
+                <label class="form-label">学号</label>
+                <input type="text" name="student_no" class="form-control form-control-lg"
+                       inputmode="numeric" required autofocus>
+            </div>
+            <div class="mb-4">
+                <label class="form-label">姓名</label>
+                <input type="text" name="name" class="form-control form-control-lg" required>
+            </div>
+            <button class="btn btn-primary w-100 btn-lg" type="submit">进入</button>
+        </form>
+        <div class="text-center mt-3">
+            <a class="small text-muted" href="{{ url_for('admin.login') }}">管理员入口 →</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

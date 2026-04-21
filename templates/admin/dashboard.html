@@ -1,0 +1,76 @@
+{% extends "admin/base.html" %}
+{% block title %}仪表盘 · 加分管理{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <h1 class="page-title">仪表盘</h1>
+        <p class="page-sub">本学期：{{ current_semester_value }}</p>
+    </div>
+</header>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">学生总数</div>
+            <div class="stat-value">{{ student_count }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">本学期记录</div>
+            <div class="stat-value">{{ record_count }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-label">本学期总分</div>
+            <div class="stat-value">{{ '%.1f' % (total_points|float) }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card {{ 'stat-warn' if pending_batches }}">
+            <div class="stat-label">待审核批次</div>
+            <div class="stat-value">{{ pending_batches }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card admin-card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h6 mb-0">最近上传</h2>
+            <a class="btn btn-sm btn-primary" href="{{ url_for('admin.upload') }}"><i class="bi bi-cloud-upload"></i> 新上传</a>
+        </div>
+        {% if recent_batches %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle">
+                <thead><tr><th>文件</th><th>学期</th><th>状态</th><th>解析/入库</th><th>时间</th><th></th></tr></thead>
+                <tbody>
+                {% for b in recent_batches %}
+                <tr>
+                    <td>{{ b.filename }}</td>
+                    <td>{{ b.semester }}</td>
+                    <td>
+                        {% if b.status == 'pending' %}<span class="badge bg-warning text-dark">待审核</span>
+                        {% elif b.status == 'approved' %}<span class="badge bg-success">已入库</span>
+                        {% else %}<span class="badge bg-secondary">已回滚</span>{% endif %}
+                    </td>
+                    <td>{{ b.total_rows }} / {{ b.approved_rows }}</td>
+                    <td class="text-muted small">{{ b.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.batch_review', batch_id=b.id) }}">查看</a></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-emoji">📥</div>
+            <p class="text-muted">还没有任何上传记录</p>
+            <a class="btn btn-primary" href="{{ url_for('admin.upload') }}">上传第一份加分文件</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
