@@ -43,8 +43,28 @@ def create_app() -> Flask:
 
     with app.app_context():
         db.create_all()
+        _auto_migrate()
 
     return app
+
+
+def _auto_migrate() -> None:
+    """轻量迁移：给已有 DB 按需补上新增列。
+    SQLite 专用：create_all 不会改已存在表，这里用 PRAGMA 检查并 ALTER。
+    """
+    from sqlalchemy import text
+
+    def ensure_column(table: str, col: str, col_def: str) -> None:
+        rows = db.session.execute(text(f"PRAGMA table_info({table})")).all()
+        existing = {r[1] for r in rows}
+        if col not in existing:
+            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}"))
+            db.session.commit()
+
+    try:
+        ensure_column("audit_log", "is_undone", "BOOLEAN NOT NULL DEFAULT 0")
+    except Exception:
+        db.session.rollback()
 
 
 app = create_app()

@@ -34,15 +34,24 @@
 <div class="card admin-card">
     <div class="card-body p-0">
         {% if rows %}
+        <form method="post" action="{{ url_for('admin.records_bulk_delete') }}" id="bulkDeleteForm"
+              onsubmit="return confirmBulkDelete(this);">
         <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
                 <thead><tr>
+                    <th style="width:36px">
+                        <input type="checkbox" class="form-check-input" id="checkAllRecords">
+                    </th>
                     <th>学号</th><th>姓名</th><th>活动</th>
                     <th class="text-end">分值</th><th>录入时间</th><th>操作</th>
                 </tr></thead>
                 <tbody>
                 {% for rec, st in rows %}
                 <tr class="{{ 'text-muted text-decoration-line-through' if rec.is_revoked }}">
+                    <td>
+                        <input type="checkbox" class="form-check-input rec-check"
+                               name="record_ids" value="{{ rec.id }}">
+                    </td>
                     <td><code>{{ st.student_no }}</code></td>
                     <td>{{ st.name }}</td>
                     <td>{{ rec.activity_name }}</td>
@@ -50,12 +59,26 @@
                     <td class="small">{{ rec.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>
                         {% if not rec.is_revoked %}
-                        <form method="post" action="{{ url_for('admin.records_revoke', rid=rec.id) }}" class="d-inline"
-                              onsubmit="return confirm('撤销该条加分？');">
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i> 撤销</button>
-                        </form>
+                        <button type="button" class="btn btn-sm btn-outline-danger revoke-btn"
+                                data-bs-toggle="modal" data-bs-target="#revokeModal"
+                                data-rid="{{ rec.id }}"
+                                data-name="{{ st.name }}"
+                                data-no="{{ st.student_no }}"
+                                data-activity="{{ rec.activity_name }}"
+                                data-points="{{ rec.points }}">
+                            <i class="bi bi-x-lg"></i> 撤销
+                        </button>
                         {% else %}
-                        <span class="badge bg-secondary">已撤销</span>
+                        <span class="badge bg-secondary me-1">已撤销</span>
+                        <button type="button" class="btn btn-sm btn-outline-success restore-btn"
+                                data-bs-toggle="modal" data-bs-target="#restoreModal"
+                                data-rid="{{ rec.id }}"
+                                data-name="{{ st.name }}"
+                                data-no="{{ st.student_no }}"
+                                data-activity="{{ rec.activity_name }}"
+                                data-points="{{ rec.points }}">
+                            <i class="bi bi-arrow-counterclockwise"></i> 恢复
+                        </button>
                         {% endif %}
                     </td>
                 </tr>
@@ -63,6 +86,18 @@
                 </tbody>
             </table>
         </div>
+        <div class="bulk-action-bar" id="bulkActionBar" hidden>
+            <span class="bulk-hint">已选 <strong id="bulkSelectedCount">0</strong> 条</span>
+            <div class="ms-auto d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-light" id="bulkClearBtn">
+                    取消选择
+                </button>
+                <button type="submit" class="btn btn-sm btn-danger">
+                    <i class="bi bi-trash"></i> 永久删除选中
+                </button>
+            </div>
+        </div>
+        </form>
         {% else %}
         <div class="empty-state p-5">
             <div class="empty-emoji">📭</div>
@@ -116,6 +151,13 @@
             覆盖已有记录（若该学生本学期同活动已加过分，勾选则替换旧值）
           </label>
         </div>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" name="send_notify"
+                 id="manualNotifyCheck" value="1" checked>
+          <label for="manualNotifyCheck" class="form-check-label">
+            <i class="bi bi-bell"></i> 发送通知给该学生
+          </label>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
@@ -124,4 +166,144 @@
     </form>
   </div></div>
 </div>
+
+<!-- 撤销确认 Modal -->
+<div class="modal fade" id="revokeModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <form method="post" id="revokeForm">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-x-lg text-danger"></i> 撤销加分</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">确定要撤销以下加分吗？</p>
+        <div class="alert alert-light border mb-3">
+          <div><strong id="revStudent">—</strong> <code id="revNo" class="text-muted"></code></div>
+          <div class="text-muted small mt-1">
+            活动：<span id="revActivity">—</span>　·　
+            分值：<strong class="text-danger">-<span id="revPoints">0</span></strong>
+          </div>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="send_notify"
+                 id="revokeNotifyCheck" value="1" checked>
+          <label for="revokeNotifyCheck" class="form-check-label">
+            <i class="bi bi-bell"></i> 发送通知给该学生
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-danger"><i class="bi bi-x-lg"></i> 确认撤销</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+
+<!-- 恢复确认 Modal -->
+<div class="modal fade" id="restoreModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <form method="post" id="restoreForm">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-arrow-counterclockwise text-success"></i> 恢复加分</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">确定要恢复以下加分吗？恢复后该分数会重新计入学生总分。</p>
+        <div class="alert alert-light border mb-3">
+          <div><strong id="resStudent">—</strong> <code id="resNo" class="text-muted"></code></div>
+          <div class="text-muted small mt-1">
+            活动：<span id="resActivity">—</span>　·　
+            分值：<strong class="text-success">+<span id="resPoints">0</span></strong>
+          </div>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="send_notify"
+                 id="restoreNotifyCheck" value="1" checked>
+          <label for="restoreNotifyCheck" class="form-check-label">
+            <i class="bi bi-bell"></i> 发送通知给该学生
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-success"><i class="bi bi-check2"></i> 确认恢复</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+
+<script>
+function confirmBulkDelete(form) {
+    var n = form.querySelectorAll('input.rec-check:checked').length;
+    if (n === 0) { return false; }
+    return confirm('将永久删除选中的 ' + n + ' 条加分记录，且无法恢复。\n\n确认继续？');
+}
+
+(function () {
+    var checkAll = document.getElementById('checkAllRecords');
+    var checks   = document.querySelectorAll('input.rec-check');
+    var bar      = document.getElementById('bulkActionBar');
+    var hintN    = document.getElementById('bulkSelectedCount');
+    var clearBtn = document.getElementById('bulkClearBtn');
+
+    function refresh() {
+        var n = 0;
+        checks.forEach(function (c) { if (c.checked) n++; });
+        if (hintN) hintN.textContent = n;
+        if (bar) bar.hidden = (n === 0);
+        if (checkAll) {
+            checkAll.checked = (n > 0 && n === checks.length);
+            checkAll.indeterminate = (n > 0 && n < checks.length);
+        }
+    }
+
+    if (checkAll) {
+        checkAll.addEventListener('change', function () {
+            checks.forEach(function (c) { c.checked = checkAll.checked; });
+            refresh();
+        });
+    }
+    checks.forEach(function (c) { c.addEventListener('change', refresh); });
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            checks.forEach(function (c) { c.checked = false; });
+            refresh();
+        });
+    }
+    refresh();
+})();
+
+(function () {
+    var revokeModal = document.getElementById('revokeModal');
+    if (revokeModal) {
+        revokeModal.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            var rid = btn.getAttribute('data-rid');
+            document.getElementById('revokeForm').action =
+                '{{ url_for("admin.records_revoke", rid=0) }}'.replace(/0$/, rid);
+            document.getElementById('revStudent').textContent  = btn.getAttribute('data-name') || '';
+            document.getElementById('revNo').textContent       = btn.getAttribute('data-no') || '';
+            document.getElementById('revActivity').textContent = btn.getAttribute('data-activity') || '';
+            document.getElementById('revPoints').textContent   = btn.getAttribute('data-points') || '0';
+        });
+    }
+
+    var restoreModal = document.getElementById('restoreModal');
+    if (restoreModal) {
+        restoreModal.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            var rid = btn.getAttribute('data-rid');
+            document.getElementById('restoreForm').action =
+                '{{ url_for("admin.records_restore", rid=0) }}'.replace(/0$/, rid);
+            document.getElementById('resStudent').textContent  = btn.getAttribute('data-name') || '';
+            document.getElementById('resNo').textContent       = btn.getAttribute('data-no') || '';
+            document.getElementById('resActivity').textContent = btn.getAttribute('data-activity') || '';
+            document.getElementById('resPoints').textContent   = btn.getAttribute('data-points') || '0';
+        });
+    }
+})();
+</script>
 {% endblock %}

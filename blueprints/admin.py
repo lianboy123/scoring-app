@@ -304,8 +304,12 @@ def batch_approve(batch_id: int):
     selected = set(request.form.getlist("approve_idx"))
     overwrite = set(request.form.getlist("overwrite_idx"))
 
+    send_notify = bool(request.form.get("send_notify"))
+
     inserted, overwritten = 0, 0
     new_record_ids_per_student: dict[int, list[int]] = {}
+    all_new_ids: list[int] = []
+    overwritten_old_ids: list[int] = []
 
     for i, row in enumerate(rows):
         idx = str(i)
@@ -328,6 +332,7 @@ def batch_approve(batch_id: int):
                 existing.revoked_at = datetime.utcnow()
                 existing.revoked_by = current_user.id
                 overwritten += 1
+                overwritten_old_ids.append(existing.id)
                 db.session.flush()  # 让部分唯一索引先看到旧行已撤销
 
         record = ScoreRecord(
@@ -341,26 +346,29 @@ def batch_approve(batch_id: int):
         db.session.add(record)
         db.session.flush()  # 拿到 id
         new_record_ids_per_student.setdefault(row["student_id"], []).append(record.id)
+        all_new_ids.append(record.id)
         inserted += 1
 
-    # 写通知（每个学生一条聚合通知）
-    for sid, rec_ids in new_record_ids_per_student.items():
-        recs = ScoreRecord.query.filter(ScoreRecord.id.in_(rec_ids)).all()
-        names = "、".join(r.activity_name for r in recs[:3])
-        if len(recs) > 3:
-            names += f" 等 {len(recs)} 项"
-        total = sum((r.points for r in recs), Decimal("0"))
-        db.session.add(Notification(
-            student_id=sid,
-            content=f"你新增了 {len(recs)} 条加分（{names}），合计 +{total} 分。",
-        ))
+    if send_notify:
+        for sid, rec_ids in new_record_ids_per_student.items():
+            recs = ScoreRecord.query.filter(ScoreRecord.id.in_(rec_ids)).all()
+            names = "、".join(r.activity_name for r in recs[:3])
+            if len(recs) > 3:
+                names += f" 等 {len(recs)} 项"
+            total = sum((r.points for r in recs), Decimal("0"))
+            db.session.add(Notification(
+                student_id=sid,
+                content=f"你新增了 {len(recs)} 条加分（{names}），合计 +{total} 分。",
+            ))
 
     batch.status = "approved"
     batch.approved_rows = inserted
     audit_log("approve_batch", target_type="batch", target_id=batch.id,
-              inserted=inserted, overwritten=overwritten)
+              inserted=inserted, overwritten=overwritten, notify=send_notify,
+              record_ids=all_new_ids, overwritten_ids=overwritten_old_ids)
     db.session.commit()
-    flash(f"已入库 {inserted} 条（其中覆盖 {overwritten} 条）。", "success")
+    notify_msg = "，已通知学生" if send_notify else "（未发通知）"
+    flash(f"已入库 {inserted} 条（其中覆盖 {overwritten} 条）{notify_msg}。", "success")
     return redirect(url_for("admin.batch_review", batch_id=batch_id))
 
 
@@ -411,6 +419,76 @@ def records():
                            students_all=students_all)
 
 
+@bp.route("/records/<int:rid>/restore", methods=["POST"])
+@login_required
+def records_restore(rid: int):
+    """把已撤销的记录恢复为有效。"""
+    r = db.session.get(ScoreRecord, rid) or abort(404)
+    if not r.is_revoked:
+        flash("该记录未被撤销，无需恢复", "warning")
+        return redirect(request.referrer or url_for("admin.records"))
+
+    # 防冲突：同学/同活动/同学期若已有其他有效记录，阻止恢复
+    conflict = (ScoreRecord.query
+                .filter(ScoreRecord.student_id == r.student_id,
+                        ScoreRecord.activity_name == r.activity_name,
+                        ScoreRecord.semester == r.semester,
+                        ScoreRecord.is_revoked.is_(False),
+                        ScoreRecord.id != r.id)
+                .first())
+    if conflict:
+        flash(f"恢复失败：{r.activity_name} 当前已有有效记录（{conflict.points} 分），"
+              f"请先撤销它再恢复。", "warning")
+        return redirect(request.referrer or url_for("admin.records"))
+
+    send_notify = bool(request.form.get("send_notify"))
+    r.is_revoked = False
+    r.revoked_at = None
+    r.revoked_by = None
+    if send_notify:
+        db.session.add(Notification(
+            student_id=r.student_id,
+            content=f"你的加分已恢复：{r.activity_name} +{r.points} 分",
+        ))
+    audit_log("restore_record", target_type="score_record", target_id=r.id,
+              activity=r.activity_name, points=str(r.points), notify=send_notify)
+    db.session.commit()
+    flash("已恢复" + ("，已通知学生" if send_notify else "（未发通知）"), "success")
+    return redirect(request.referrer or url_for("admin.records"))
+
+
+@bp.route("/records/bulk_delete", methods=["POST"])
+@login_required
+def records_bulk_delete():
+    """物理永久删除选中的加分记录（不可恢复）。
+
+    与「撤销」的区别：
+    - 撤销：软删（is_revoked=True），可恢复，发通知
+    - 永久删除：从 DB 抹除；学生端不会显示"撤销通知"；适合清理脏数据
+    """
+    ids = request.form.getlist("record_ids", type=int)
+    if not ids:
+        flash("没有选中任何记录", "warning")
+        return redirect(request.referrer or url_for("admin.records"))
+
+    records = ScoreRecord.query.filter(ScoreRecord.id.in_(ids)).all()
+    deleted_summary = [
+        {"id": r.id, "student_id": r.student_id,
+         "activity": r.activity_name, "points": str(r.points),
+         "semester": r.semester, "was_revoked": r.is_revoked}
+        for r in records
+    ]
+    for r in records:
+        db.session.delete(r)
+
+    audit_log("bulk_delete_records", target_type="score_record",
+              count=len(records), record_ids=[r["id"] for r in deleted_summary],
+              records=deleted_summary)
+    db.session.commit()
+    flash(f"已永久删除 {len(records)} 条加分记录（不可恢复）。", "success")
+    return redirect(request.referrer or url_for("admin.records"))
+
+
 @bp.route("/records/<int:rid>/revoke", methods=["POST"])
 @login_required
 def records_revoke(rid: int):
@@ -418,17 +496,19 @@ def records_revoke(rid: int):
     if r.is_revoked:
         flash("该记录已撤销", "warning")
         return redirect(request.referrer or url_for("admin.records"))
+    send_notify = bool(request.form.get("send_notify"))
     r.is_revoked = True
     r.revoked_at = datetime.utcnow()
     r.revoked_by = current_user.id
-    db.session.add(Notification(
-        student_id=r.student_id,
-        content=f"你的加分被撤销：{r.activity_name}（-{r.points} 分）",
-    ))
+    if send_notify:
+        db.session.add(Notification(
+            student_id=r.student_id,
+            content=f"你的加分被撤销：{r.activity_name}（-{r.points} 分）",
+        ))
     audit_log("revoke_record", target_type="score_record", target_id=r.id,
-              activity=r.activity_name, points=str(r.points))
+              activity=r.activity_name, points=str(r.points), notify=send_notify)
     db.session.commit()
-    flash("已撤销", "success")
+    flash("已撤销" + ("，已通知学生" if send_notify else "（未发通知）"), "success")
     return redirect(request.referrer or url_for("admin.records"))
 
 
@@ -446,22 +526,25 @@ def _parse_points(raw: str) -> Decimal | None:
 
 
 def _add_score_for(student_id: int, activity: str, points: Decimal,
-                   semester: str, overwrite: bool) -> tuple[str, str]:
+                   semester: str, overwrite: bool,
+                   send_notify: bool = True) -> tuple[str, str, int | None, int | None]:
     """给单个学生写一条加分。
 
-    返回 (status, msg)。
+    返回 (status, msg, new_record_id, overwritten_record_id)。
     status: 'added' / 'overwritten' / 'duplicate' / 'skipped'
     """
     existing = (ScoreRecord.query
                 .filter_by(student_id=student_id, activity_name=activity,
                            semester=semester, is_revoked=False).first())
     if existing and not overwrite:
-        return "duplicate", f"已存在（{existing.points} 分）"
+        return "duplicate", f"已存在（{existing.points} 分）", None, None
 
+    overwritten_id = None
     if existing and overwrite:
         existing.is_revoked = True
         existing.revoked_at = datetime.utcnow()
         existing.revoked_by = current_user.id
+        overwritten_id = existing.id
         db.session.flush()
 
     rec = ScoreRecord(
@@ -470,14 +553,16 @@ def _add_score_for(student_id: int, activity: str, points: Decimal,
         operator_id=current_user.id,
     )
     db.session.add(rec)
-    db.session.add(Notification(
-        student_id=student_id,
-        content=(f"你新增加分：{activity} +{points} 分"
-                 if not existing else
-                 f"你的加分已更新：{activity} → {points} 分"),
-    ))
+    db.session.flush()  # 拿到 id 用于审计
+    if send_notify:
+        db.session.add(Notification(
+            student_id=student_id,
+            content=(f"你新增加分：{activity} +{points} 分"
+                     if not existing else
+                     f"你的加分已更新：{activity} → {points} 分"),
+        ))
     return ("overwritten" if existing else "added",
-            f"+{points} 分")
+            f"+{points} 分", rec.id, overwritten_id)
 
 
 @bp.route("/records/create", methods=["POST"])
@@ -489,6 +574,7 @@ def records_create():
     points_raw = (request.form.get("points") or "").strip()
     semester = (request.form.get("semester") or current_semester()).strip()
     overwrite = bool(request.form.get("overwrite"))
+    send_notify = bool(request.form.get("send_notify"))
 
     student = db.session.get(Student, sid) if sid else None
     if not student:
@@ -502,18 +588,22 @@ def records_create():
         flash(f"分值不合法：{points_raw}（需 0~99.99）", "warning")
         return redirect(request.referrer or url_for("admin.records"))
 
-    status, msg = _add_score_for(student.id, activity, points, semester, overwrite)
+    status, msg, new_id, ow_id = _add_score_for(
+        student.id, activity, points, semester, overwrite, send_notify=send_notify)
     if status == "duplicate":
         flash(f"{student.name}（{student.student_no}）本学期已有「{activity}」记录，{msg}。"
               f"若确需修改请勾选「覆盖已有记录」。", "warning")
         return redirect(request.referrer or url_for("admin.records"))
 
-    audit_log("manual_add_record", target_type="score_record",
+    audit_log("manual_add_record", target_type="score_record", target_id=new_id,
               student_id=student.id, student_no=student.student_no,
               activity=activity, points=str(points), semester=semester,
-              mode=status)
+              mode=status, notify=send_notify,
+              record_id=new_id, overwritten_id=ow_id)
     db.session.commit()
-    flash(f"已为 {student.name}（{student.student_no}）加分 {activity} {msg}", "success")
+    notify_tail = "，已通知" if send_notify else "（未发通知）"
+    flash(f"已为 {student.name}（{student.student_no}）加分 {activity} {msg}{notify_tail}",
+          "success")
     return redirect(request.referrer or url_for("admin.records"))
 
 
@@ -526,6 +616,7 @@ def bulk_add():
         points_raw = (request.form.get("points") or "").strip()
         semester = (request.form.get("semester") or current_semester()).strip()
         overwrite = bool(request.form.get("overwrite"))
+        send_notify = bool(request.form.get("send_notify"))
         student_ids = request.form.getlist("student_ids", type=int)
 
         errors = []
@@ -543,22 +634,34 @@ def bulk_add():
 
         added, overwritten, duplicated = 0, 0, 0
         dup_names = []
+        new_ids: list[int] = []
+        overwritten_ids: list[int] = []
         for sid in student_ids:
             student = db.session.get(Student, sid)
             if not student:
                 continue
-            status, _ = _add_score_for(student.id, activity, points, semester, overwrite)
+            status, _, nid, oid = _add_score_for(
+                student.id, activity, points, semester, overwrite,
+                send_notify=send_notify)
             if status == "added":
                 added += 1
+                if nid:
+                    new_ids.append(nid)
             elif status == "overwritten":
                 overwritten += 1
+                if nid:
+                    new_ids.append(nid)
+                if oid:
+                    overwritten_ids.append(oid)
             elif status == "duplicate":
                 duplicated += 1
                 dup_names.append(f"{student.name}({student.student_no})")
 
         audit_log("bulk_add_records", target_type="score_record",
                   activity=activity, points=str(points), semester=semester,
-                  added=added, overwritten=overwritten, duplicated=duplicated)
+                  added=added, overwritten=overwritten, duplicated=duplicated,
+                  notify=send_notify,
+                  record_ids=new_ids, overwritten_ids=overwritten_ids)
         db.session.commit()
 
         msg = f"活动「{activity}」加分完成：新增 {added}"
@@ -568,6 +671,7 @@ def bulk_add():
             msg += (f"，跳过已有 {duplicated}"
                     f"（{', '.join(dup_names[:5])}"
                     f"{'…' if len(dup_names) > 5 else ''}）")
+        msg += "，已通知学生" if send_notify else "（未发通知）"
         flash(msg + "。", "success")
         return redirect(url_for("admin.bulk_add"))
 

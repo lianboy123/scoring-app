@@ -43,6 +43,30 @@
 </section>
 
 <section class="mt-3 px-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 mb-0 text-muted">最新活动公示</h2>
+        <a class="small text-primary" href="{{ url_for('student.announcements') }}">查看全部 →</a>
+    </div>
+    {% if latest_announcements %}
+    <div class="announce-summary-list">
+        {% for a in latest_announcements %}
+        <a href="{{ url_for('student.announcements') }}#act-{{ loop.index }}" class="announce-summary">
+            <div class="as-main">
+                <div class="as-title">{{ a.activity }}</div>
+                <div class="as-meta">{{ a.count }} 人 · 最近 {{ a.latest.strftime('%m-%d') }}</div>
+            </div>
+            <i class="bi bi-chevron-right"></i>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-3">
+        <div class="text-muted small">本学期还没有活动公示</div>
+    </div>
+    {% endif %}
+</section>
+
+<section class="mt-3 px-3">
     <a href="{{ url_for('student.ranking') }}" class="quick-link">
         <i class="bi bi-bar-chart"></i>
         <div>

@@ -1,0 +1,62 @@
+{% extends "student/_layout.html" %}
+{% block title %}活动公示 · 活动加分{% endblock %}
+
+{% block content %}
+<header class="mobile-header">
+    <div>
+        <div class="hello">活动公示</div>
+        <div class="muted small">{{ sem }} · 共 {{ items|length }} 个活动</div>
+    </div>
+    <a href="{{ url_for('student.home') }}" class="text-muted small"><i class="bi bi-house-door"></i> 首页</a>
+</header>
+
+<section class="px-3 mt-2">
+    {% if semesters and semesters|length > 1 %}
+    <form method="get" class="mb-3">
+        <select name="semester" class="form-select" onchange="this.form.submit()">
+            {% for s in semesters %}
+            <option value="{{ s }}" {{ 'selected' if s == sem }}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
+
+    {% if items %}
+    <div class="announce-list">
+        {% for it in items %}
+        <details class="announce-card" {{ 'open' if loop.index <= 2 }}>
+            <summary>
+                <div class="a-title">{{ it.activity }}</div>
+                <div class="a-meta">
+                    <span>{{ it.count }} 人</span>
+                    <span class="dot">·</span>
+                    <span>合计 +{{ '%.1f' % (it.total_points|float) }}</span>
+                    <span class="dot">·</span>
+                    <span class="text-muted">{{ it.latest.strftime('%Y-%m-%d') }}</span>
+                </div>
+                <i class="bi bi-chevron-down a-caret"></i>
+            </summary>
+            <div class="a-body">
+                {% for rec, st in it.rows %}
+                <div class="a-row">
+                    <span class="a-name">{{ st.name }}</span>
+                    <span class="a-points">+{{ rec.points }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-5">
+        <div class="empty-emoji">📢</div>
+        <div class="text-muted">该学期暂无活动公示</div>
+        <div class="text-muted small">有新活动加分后会出现在这里</div>
+    </div>
+    {% endif %}
+
+    <p class="text-muted small mt-4 text-center">
+        公示内容只显示姓名与分值，不展示学号。
+    </p>
+</section>
+{% endblock %}

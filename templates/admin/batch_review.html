@@ -81,7 +81,7 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div class="small text-muted">
             共 {{ rows|length }} 行 ·
             可入库 {{ rows|selectattr('status','equalto','ok')|list|length }} ·
@@ -89,12 +89,18 @@
             不在名单 {{ rows|selectattr('status','equalto','no_match')|list|length }} ·
             错误 {{ rows|selectattr('status','equalto','error')|list|length }}
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-3 align-items-center">
         {% if batch.status == 'pending' %}
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="send_notify"
+                       id="sendNotifyCheck" value="1" checked>
+                <label for="sendNotifyCheck" class="form-check-label">
+                    <i class="bi bi-bell"></i> 发送通知给学生
+                </label>
+            </div>
             <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> 确认入库选中行</button>
         {% elif batch.status == 'approved' %}
-            <button type="button" class="btn btn-outline-danger" onclick="document.getElementById('rollbackForm').submit()"
-                    onclick="return confirm('确认回滚整个批次？')">
+            <button type="button" class="btn btn-outline-danger" onclick="document.getElementById('rollbackForm').submit()">
                 <i class="bi bi-arrow-counterclockwise"></i> 整批回滚
             </button>
         {% endif %}

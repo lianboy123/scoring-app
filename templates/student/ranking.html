@@ -66,7 +66,55 @@
     {% endif %}
 
     <p class="text-muted small mt-3 text-center">
-        排名榜不显示其他同学的姓名/学号，保护隐私。
+        上方排名榜不显示其他同学的姓名/学号；下方为全员加分明细表。
     </p>
+</section>
+
+<section class="roster-wrap">
+    <div class="d-flex justify-content-between align-items-baseline mb-2">
+        <h2 class="h6 mb-0">全员加分明细（按学号）</h2>
+        <span class="text-muted small">{{ roster_students|length }} 人 · {{ roster_activities|length }} 个活动</span>
+    </div>
+
+    {% if roster_activities %}
+    <div class="roster-scroll">
+        <table class="roster-table">
+            <thead>
+                <tr>
+                    <th class="col-no">学号</th>
+                    <th class="col-name">姓名</th>
+                    {% for a in roster_activities %}
+                    <th class="col-act" title="{{ a }}">{{ a }}</th>
+                    {% endfor %}
+                    <th class="col-total">总和</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in roster_students %}
+                {% set row = roster_pivot.get(s.id, {}) %}
+                {% set tot = roster_totals.get(s.id, 0) %}
+                <tr class="{{ 'row-zero' if not row }}">
+                    <td class="col-no"><code>{{ s.student_no }}</code></td>
+                    <td class="col-name">{{ s.name }}</td>
+                    {% for a in roster_activities %}
+                        {% if row.get(a) is not none %}
+                        <td class="col-act has-val">+{{ row.get(a) }}</td>
+                        {% else %}
+                        <td class="col-act empty">—</td>
+                        {% endif %}
+                    {% endfor %}
+                    <td class="col-total">{{ '%.1f' % (tot|float) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="text-muted small mt-2">横向可滚动查看更多活动。学号、姓名、总和列始终固定。</p>
+    {% else %}
+    <div class="empty-state py-4">
+        <div class="empty-emoji">📋</div>
+        <div class="text-muted">本学期还没有任何加分记录</div>
+    </div>
+    {% endif %}
 </section>
 {% endblock %}

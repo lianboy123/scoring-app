@@ -358,3 +358,182 @@ body {
     padding: 14px 0 4px;
     z-index: 5;
 }
+
+/* ============ 活动加分公示 ============ */
+
+/* 首页摘要列表 */
+.announce-summary-list {
+    display: flex; flex-direction: column; gap: 8px;
+}
+.announce-summary {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    background: #fff; border-radius: 12px;
+    border: 1px solid #ECECF1;
+    text-decoration: none; color: inherit;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+.announce-summary:hover {
+    border-color: var(--brand-300);
+    box-shadow: 0 4px 10px -6px rgba(124, 58, 237, .2);
+}
+.announce-summary .as-main { flex: 1; min-width: 0; }
+.announce-summary .as-title {
+    font-weight: 600; font-size: 14px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.announce-summary .as-meta {
+    font-size: 12px; color: #6B7280; margin-top: 2px;
+}
+.announce-summary > i { color: #9CA3AF; font-size: 14px; }
+
+/* 公示列表页 */
+.announce-list {
+    display: flex; flex-direction: column; gap: 10px;
+}
+.announce-card {
+    background: #fff;
+    border: 1px solid #ECECF1;
+    border-radius: 14px;
+    overflow: hidden;
+}
+.announce-card > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 10px;
+    row-gap: 4px;
+    align-items: center;
+}
+.announce-card > summary::-webkit-details-marker { display: none; }
+.announce-card .a-title {
+    grid-column: 1; grid-row: 1;
+    font-weight: 600; font-size: 15px;
+}
+.announce-card .a-meta {
+    grid-column: 1; grid-row: 2;
+    font-size: 12px; color: #6B7280;
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+}
+.announce-card .a-meta .dot { color: #D1D5DB; }
+.announce-card .a-caret {
+    grid-column: 2; grid-row: 1 / span 2;
+    color: #9CA3AF; font-size: 14px;
+    transition: transform .2s ease;
+}
+.announce-card[open] .a-caret { transform: rotate(180deg); }
+
+.announce-card .a-body {
+    border-top: 1px solid #F3F4F6;
+    background: #FAFAFC;
+    padding: 6px 0;
+}
+.announce-card .a-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+.announce-card .a-row + .a-row {
+    border-top: 1px dashed #EEF0F4;
+}
+.announce-card .a-name { color: #1F2937; }
+.announce-card .a-points {
+    color: var(--brand-700); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ============ 全员加分明细透视表（/ranking 页底部） ============ */
+.roster-wrap {
+    padding: 8px 16px 28px;
+}
+.roster-scroll {
+    background: #fff;
+    border: 1px solid #ECECF1;
+    border-radius: 12px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 70vh;
+}
+.roster-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+    width: max-content;
+    min-width: 100%;
+}
+.roster-table thead th {
+    position: sticky; top: 0;
+    background: var(--brand-50);
+    color: var(--brand-700);
+    font-weight: 600;
+    font-size: 12px;
+    padding: 10px 12px;
+    white-space: nowrap;
+    border-bottom: 1px solid #E5E7EB;
+    z-index: 2;
+}
+.roster-table tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #F3F4F6;
+    white-space: nowrap;
+}
+.roster-table tbody tr:last-child td { border-bottom: none; }
+.roster-table tbody tr:hover td { background: #FAFAFC; }
+
+.roster-table .col-no,
+.roster-table .col-name,
+.roster-table .col-total {
+    background: #fff;
+    position: sticky;
+    z-index: 1;
+}
+.roster-table thead .col-no,
+.roster-table thead .col-name,
+.roster-table thead .col-total {
+    z-index: 3;
+    background: var(--brand-50);
+}
+.roster-table .col-no    { left: 0;   min-width: 96px; }
+.roster-table .col-name  { left: 96px; min-width: 80px;
+                           box-shadow: 1px 0 0 #ECECF1; }
+.roster-table thead .col-name { box-shadow: 1px 0 0 #E5E7EB; }
+.roster-table .col-total {
+    right: 0; text-align: right; font-weight: 700;
+    color: var(--brand-700); min-width: 70px;
+    box-shadow: -1px 0 0 #ECECF1;
+}
+.roster-table thead .col-total { box-shadow: -1px 0 0 #E5E7EB; }
+
+.roster-table .col-act {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    min-width: 72px;
+    max-width: 180px;
+}
+.roster-table thead .col-act {
+    text-align: center;
+    max-width: 180px;
+    overflow: hidden; text-overflow: ellipsis;
+}
+.roster-table .col-act.has-val { color: #374151; }
+.roster-table .col-act.empty   { color: #D1D5DB; }
+.roster-table .row-zero .col-total { color: #9CA3AF; font-weight: 500; }
+.roster-table tr:hover .col-no,
+.roster-table tr:hover .col-name,
+.roster-table tr:hover .col-total { background: #FAFAFC; }
+
+/* ============ 加分记录页：底部批量操作栏 ============ */
+.bulk-action-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px;
+    border-top: 1px solid #ECECF1;
+    background: #FFF7F7;
+}
+.bulk-action-bar .bulk-hint {
+    color: #B91C1C; font-size: 13px;
+}
+.bulk-action-bar .bulk-hint strong {
+    font-size: 15px; margin: 0 2px;
+}

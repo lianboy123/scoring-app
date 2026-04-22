@@ -112,9 +112,35 @@ def home():
               .filter_by(student_id=s.id, semester=sem, is_revoked=False)
               .order_by(ScoreRecord.created_at.desc())
               .limit(5).all())
+
+    from services.announcements import list_announcements
+    latest_announcements = list_announcements(sem)[:3]
+
     return render_template("student/home.html",
                            total=total, record_count=record_count,
-                           recent=recent, sem=sem)
+                           recent=recent, sem=sem,
+                           latest_announcements=latest_announcements)
+
+
+@bp.route("/announcements")
+@student_required
+def announcements():
+    """活动加分公示：按 (学期, 活动名称) 聚合。"""
+    from services.announcements import list_announcements, get_announcement_rows
+
+    s = get_current_student()
+    sems = all_semesters_for_student(s.id) or [current_semester()]
+    sem = request.args.get("semester") or sems[0]
+
+    summaries = list_announcements(sem)
+    # 组装每条公示的完整名单，供模板一次性渲染（学期内活动数与人数规模都很小）
+    items = []
+    for item in summaries:
+        rows = get_announcement_rows(sem, item["activity"])
+        items.append({**item, "rows": rows})
+
+    return render_template("student/announcements.html",
+                           items=items, sem=sem, semesters=sems)
 
 
 @bp.route("/ranking")
@@ -125,7 +151,43 @@ def ranking():
     s = get_current_student()
     sem = current_semester()
     view = build_ranking_view(sem, s.id)
-    return render_template("student/ranking.html", sem=sem, **view)
+    roster = _build_full_roster(sem)
+    return render_template("student/ranking.html", sem=sem, **view, **roster)
+
+
+def _build_full_roster(sem: str) -> dict:
+    """构造「全员加分透视表」数据：行=学生（学号升序），列=活动（最早录入升序）。"""
+    from decimal import Decimal
+    from sqlalchemy import func as _func
+
+    students = Student.query.order_by(Student.student_no.asc()).all()
+
+    activity_rows = (db.session.query(
+                        ScoreRecord.activity_name,
+                        _func.min(ScoreRecord.created_at).label("first_at"))
+                     .filter(ScoreRecord.semester == sem,
+                             ScoreRecord.is_revoked.is_(False))
+                     .group_by(ScoreRecord.activity_name)
+                     .order_by(_func.min(ScoreRecord.created_at).asc())
+                     .all())
+    activities = [r[0] for r in activity_rows]
+
+    records = (ScoreRecord.query
+               .filter(ScoreRecord.semester == sem,
+                       ScoreRecord.is_revoked.is_(False))
+               .all())
+    pivot: dict[int, dict[str, Decimal]] = {}
+    totals: dict[int, Decimal] = {}
+    for r in records:
+        pivot.setdefault(r.student_id, {})[r.activity_name] = r.points
+        totals[r.student_id] = totals.get(r.student_id, Decimal(0)) + r.points
+
+    return {
+        "roster_students": students,
+        "roster_activities": activities,
+        "roster_pivot": pivot,
+        "roster_totals": totals,
+    }
 
 
 @bp.route("/me")

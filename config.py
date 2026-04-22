@@ -21,7 +21,7 @@ class BaseConfig:
     SESSION_COOKIE_HTTPONLY = True
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 2  # 管理员 2 小时
 
-    MAX_CONTENT_LENGTH = None  # 不限上传大小（按计划决定）
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 单次上传 ≤ 16MB（学生名单 / 加分 Excel 足够）
 
     DEFAULT_SEMESTER = os.environ.get("SCORING_DEFAULT_SEMESTER", "2026-spring")
 

@@ -115,6 +115,7 @@ class AuditLog(db.Model):
     target_type = db.Column(db.String(64))
     target_id = db.Column(db.Integer)
     detail = db.Column(db.Text)  # JSON 字符串
+    is_undone = db.Column(db.Boolean, default=False, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     admin = db.relationship("Admin")
