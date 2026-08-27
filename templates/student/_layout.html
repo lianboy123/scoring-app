@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
-<body class="student-body">
+<body class="student-body {% block body_class %}{% endblock %}">
 
 <div class="student-shell">
     {% block content %}{% endblock %}
@@ -21,11 +21,10 @@
         <i class="bi bi-house-door"></i><span>首页</span>
     </a>
     <a href="{{ url_for('student.ranking') }}" class="{{ 'active' if request.endpoint == 'student.ranking' }}">
-        <i class="bi bi-bar-chart"></i><span>排名</span>
+        <i class="bi bi-table"></i><span>公示</span>
     </a>
-    <a href="{{ url_for('student.me') }}" class="{{ 'active' if request.endpoint == 'student.me' }}">
-        <i class="bi bi-person-circle"></i><span>我</span>
-        {% if unread_count %}<em class="dot-badge">{{ unread_count }}</em>{% endif %}
+    <a href="{{ url_for('student.claims') }}" class="{{ 'active' if request.endpoint == 'student.claims' }}">
+        <i class="bi bi-clipboard-plus"></i><span>申报</span>
     </a>
 </nav>
 {% endif %}

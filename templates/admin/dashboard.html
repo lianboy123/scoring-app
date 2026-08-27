@@ -1,64 +1,38 @@
 {% extends "admin/base.html" %}
-{% block title %}仪表盘 · 加分管理{% endblock %}
+{% block title %}主页 · 加分管理{% endblock %}
 
 {% block content %}
 <header class="page-header">
     <div>
-        <h1 class="page-title">仪表盘</h1>
+        <h1 class="page-title">主页</h1>
         <p class="page-sub">本学期：{{ current_semester_value }}</p>
     </div>
 </header>
 
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
+    <div class="col-12 col-md-4">
         <div class="stat-card">
-            <div class="stat-label">学生总数</div>
-            <div class="stat-value">{{ student_count }}</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-label">本学期记录</div>
-            <div class="stat-value">{{ record_count }}</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-label">本学期总分</div>
-            <div class="stat-value">{{ '%.1f' % (total_points|float) }}</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card {{ 'stat-warn' if pending_batches }}">
-            <div class="stat-label">待审核批次</div>
-            <div class="stat-value">{{ pending_batches }}</div>
+            <div class="stat-label">本学期活动</div>
+            <div class="stat-value">{{ activity_count }} <small class="stat-unit">次</small></div>
         </div>
     </div>
 </div>
 
-<div class="card admin-card">
+<div class="card admin-card mb-3">
     <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h6 mb-0">最近上传</h2>
-            <a class="btn btn-sm btn-primary" href="{{ url_for('admin.upload') }}"><i class="bi bi-cloud-upload"></i> 新上传</a>
-        </div>
-        {% if recent_batches %}
+        <h2 class="h6 mb-3">最近活动加分</h2>
+        {% if recent_activities %}
         <div class="table-responsive">
             <table class="table table-sm table-hover align-middle">
-                <thead><tr><th>文件</th><th>学期</th><th>状态</th><th>解析/入库</th><th>时间</th><th></th></tr></thead>
+                <thead><tr><th>活动名称</th><th>参加人数</th><th>分值范围</th><th>最近录入</th><th></th></tr></thead>
                 <tbody>
-                {% for b in recent_batches %}
+                {% for item in recent_activities %}
                 <tr>
-                    <td>{{ b.filename }}</td>
-                    <td>{{ b.semester }}</td>
-                    <td>
-                        {% if b.status == 'pending' %}<span class="badge bg-warning text-dark">待审核</span>
-                        {% elif b.status == 'approved' %}<span class="badge bg-success">已入库</span>
-                        {% else %}<span class="badge bg-secondary">已回滚</span>{% endif %}
-                    </td>
-                    <td>{{ b.total_rows }} / {{ b.approved_rows }}</td>
-                    <td class="text-muted small">{{ b.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.batch_review', batch_id=b.id) }}">查看</a></td>
+                    <td class="fw-semibold">{{ item.activity_name }}</td>
+                    <td>{{ item.participant_count }} 人</td>
+                    <td>{{ item.min_points }}{% if item.min_points != item.max_points %} ～ {{ item.max_points }}{% endif %}</td>
+                    <td class="text-muted small">{{ item.latest.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.records', semester=current_semester_value, q=item.activity_name) }}">查看</a></td>
                 </tr>
                 {% endfor %}
                 </tbody>
@@ -66,11 +40,25 @@
         </div>
         {% else %}
         <div class="empty-state">
-            <div class="empty-emoji">📥</div>
-            <p class="text-muted">还没有任何上传记录</p>
-            <a class="btn btn-primary" href="{{ url_for('admin.upload') }}">上传第一份加分文件</a>
+            <div class="empty-emoji">📋</div>
+            <p class="text-muted">本学期还没有活动加分</p>
+            <a class="btn btn-primary" href="{{ url_for('admin.bulk_add') }}">录入第一次活动</a>
         </div>
         {% endif %}
+    </div>
+</div>
+
+<div class="card admin-card">
+    <div class="card-body roster-row">
+        <div>
+            <h2 class="h6 mb-1">学生名单 <span class="text-muted fw-normal">{{ student_count }} 人</span></h2>
+            <a href="{{ url_for('admin.students_export') }}" class="roster-file-link">
+                <i class="bi bi-file-earmark-excel"></i> 学生名单-{{ current_semester_value }}.xlsx
+            </a>
+        </div>
+        <a href="{{ url_for('admin.students') }}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil-square"></i> 更改名单
+        </a>
     </div>
 </div>
 {% endblock %}

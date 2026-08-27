@@ -19,34 +19,36 @@
 
     <nav class="admin-nav">
         <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' }}">
-            <i class="bi bi-grid-1x2"></i> 仪表盘
+            <i class="bi bi-house-door"></i> 主页
         </a>
-        <a href="{{ url_for('admin.students') }}" class="{{ 'active' if request.endpoint == 'admin.students' }}">
-            <i class="bi bi-people"></i> 学生名单
-        </a>
-        <a href="{{ url_for('admin.upload') }}" class="{{ 'active' if request.endpoint in ('admin.upload','admin.batch_review') }}">
-            <i class="bi bi-cloud-upload"></i> 上传加分
-        </a>
-        <a href="{{ url_for('admin.bulk_add') }}" class="{{ 'active' if request.endpoint == 'admin.bulk_add' }}">
-            <i class="bi bi-collection"></i> 批量加分
-        </a>
+        <details class="nav-group">
+            <summary class="{{ 'active' if request.endpoint in ('admin.bulk_add','admin.category_page','admin.upload','admin.claims') }}">
+                <span><i class="bi bi-plus-square"></i> 加分管理</span>
+                <i class="bi bi-chevron-down nav-chevron"></i>
+            </summary>
+            <div class="nav-submenu">
+            {% for category in scoring_categories %}
+                <a href="{{ url_for('admin.bulk_add') if category.slug == 'behavior' else url_for('admin.claims', category=category.slug) }}"
+                   class="{{ 'active' if (category.slug == 'behavior' and request.endpoint == 'admin.bulk_add') or (request.endpoint == 'admin.claims' and request.args.get('category') == category.slug) }}">
+                    {{ category.label }}{% if category.slug != 'behavior' %}<span class="nav-wip">审核</span>{% endif %}
+                </a>
+            {% endfor %}
+            </div>
+        </details>
         <a href="{{ url_for('admin.records') }}" class="{{ 'active' if request.endpoint == 'admin.records' }}">
             <i class="bi bi-list-check"></i> 加分记录
         </a>
         <a href="{{ url_for('admin.export_page') }}" class="{{ 'active' if request.endpoint == 'admin.export_page' }}">
-            <i class="bi bi-download"></i> 导出 / 备份
+            <i class="bi bi-download"></i> 导出备份
         </a>
         <a href="{{ url_for('admin.logs') }}" class="{{ 'active' if request.endpoint == 'admin.logs' }}">
             <i class="bi bi-clock-history"></i> 操作日志
         </a>
         {% if current_user.is_super %}
-        <a href="{{ url_for('admin.admins_list') }}" class="{{ 'active' if request.endpoint == 'admin.admins_list' }}">
-            <i class="bi bi-shield-lock"></i> 管理员
-        </a>
-        {% endif %}
         <a href="{{ url_for('admin.settings') }}" class="{{ 'active' if request.endpoint == 'admin.settings' }}">
             <i class="bi bi-gear"></i> 设置
         </a>
+        {% endif %}
     </nav>
 
     <div class="admin-foot">

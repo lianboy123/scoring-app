@@ -1,14 +1,15 @@
 {% extends "admin/base.html" %}
-{% block title %}批量加分 · 加分管理{% endblock %}
+{% block title %}行为规范 · 加分管理{% endblock %}
 
 {% block content %}
 <header class="page-header">
     <div>
-        <h1 class="page-title">批量加分</h1>
-        <p class="page-sub">一个活动、相同分值，勾选多名学生一次性录入</p>
+        <div class="eyebrow">加分管理</div>
+        <h1 class="page-title">行为规范</h1>
+        <p class="page-sub">一个活动批量选人，每位学生可录入不同分值</p>
     </div>
-    <a href="{{ url_for('admin.records') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left"></i> 返回记录
+    <a href="{{ url_for('admin.upload') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-cloud-upload"></i> 上传文件 <span class="badge text-bg-light ms-1">待完善</span>
     </a>
 </header>
 
@@ -22,9 +23,11 @@
                            placeholder="例如：创新讲座 11·05">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">分值（每人相同）</label>
-                    <input class="form-control" name="points" type="number" step="0.01" min="0" max="99.99"
-                           required placeholder="如 0.5">
+                    <label class="form-label">统一填充 <span class="text-muted small">（可选）</span></label>
+                    <div class="input-group">
+                        <input class="form-control" id="defaultPoints" type="number" step="0.01" min="-99.99" max="99.99" placeholder="如 0.5">
+                        <button class="btn btn-outline-primary" type="button" id="applyPoints">应用</button>
+                    </div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">学期</label>
@@ -42,6 +45,13 @@
                        id="bulkNotifyCheck" value="1" checked>
                 <label for="bulkNotifyCheck" class="form-check-label">
                     <i class="bi bi-bell"></i> 发送通知给这些学生
+                </label>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" name="is_public"
+                       id="bulkPublicCheck" value="1" checked>
+                <label for="bulkPublicCheck" class="form-check-label">
+                    <i class="bi bi-megaphone"></i> 在学生端公示本活动
                 </label>
             </div>
         </div>
@@ -64,13 +74,20 @@
             </div>
 
             {% if students %}
-            <div class="student-grid">
+            <div class="student-score-grid">
                 {% for s in students %}
-                <label class="student-chip" data-q="{{ s.student_no }} {{ s.name }}">
-                    <input type="checkbox" name="student_ids" value="{{ s.id }}" class="form-check-input stu-cb">
-                    <span class="chip-no">{{ s.student_no }}</span>
-                    <span class="chip-name">{{ s.name }}</span>
-                </label>
+                <div class="student-score-card" data-q="{{ s.student_no }} {{ s.name }}">
+                    <label class="student-identity">
+                        <input type="checkbox" name="student_ids" value="{{ s.id }}" class="form-check-input stu-cb">
+                        <span class="chip-no">{{ s.student_no }}</span>
+                        <span class="chip-name">{{ s.name }}</span>
+                    </label>
+                    <div class="input-group input-group-sm score-input-group">
+                        <input class="form-control stu-points" name="points_{{ s.id }}" type="number"
+                               step="0.01" min="-99.99" max="99.99" placeholder="分值" disabled>
+                        <span class="input-group-text">分</span>
+                    </div>
+                </div>
                 {% endfor %}
             </div>
             {% else %}
@@ -85,7 +102,7 @@
     {% if students %}
     <div class="d-flex justify-content-end mt-3 sticky-bottom-bar">
         <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
-            <i class="bi bi-check2-circle"></i> 给 <span id="submitCount">0</span> 位学生加分
+            <i class="bi bi-check2-circle"></i> 保存 <span id="submitCount">0</span> 位学生的分数
         </button>
     </div>
     {% endif %}
@@ -94,7 +111,7 @@
 <script>
 (function () {
     var cbs   = document.querySelectorAll('.stu-cb');
-    var chips = document.querySelectorAll('.student-chip');
+    var chips = document.querySelectorAll('.student-score-card');
     var filter = document.getElementById('filterBox');
     var hint   = document.getElementById('selectedHint');
     var submitBtn = document.getElementById('submitBtn');
@@ -109,7 +126,14 @@
             submitCount.textContent = n;
         }
     }
-    cbs.forEach(function (c) { c.addEventListener('change', refreshCount); });
+    function syncInput(c) {
+        var card = c.closest('.student-score-card');
+        var points = card.querySelector('.stu-points');
+        points.disabled = !c.checked;
+        points.required = c.checked;
+        card.classList.toggle('selected', c.checked);
+    }
+    cbs.forEach(function (c) { c.addEventListener('change', function () { syncInput(c); refreshCount(); }); });
 
     function applyFilter() {
         var q = (filter.value || '').trim().toLowerCase();
@@ -125,7 +149,7 @@
         chips.forEach(function (ch) {
             if (ch.style.display !== 'none') {
                 var cb = ch.querySelector('.stu-cb');
-                if (cb) cb.checked = true;
+                if (cb) { cb.checked = true; syncInput(cb); }
             }
         });
         refreshCount();
@@ -133,8 +157,15 @@
 
     var clearBtn = document.getElementById('clearAllBtn');
     if (clearBtn) clearBtn.addEventListener('click', function () {
-        cbs.forEach(function (c) { c.checked = false; });
+        cbs.forEach(function (c) { c.checked = false; syncInput(c); });
         refreshCount();
+    });
+
+    document.getElementById('applyPoints').addEventListener('click', function () {
+        var value = document.getElementById('defaultPoints').value;
+        cbs.forEach(function (c) {
+            if (c.checked) c.closest('.student-score-card').querySelector('.stu-points').value = value;
+        });
     });
 
     refreshCount();

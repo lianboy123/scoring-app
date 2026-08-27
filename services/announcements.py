@@ -25,7 +25,8 @@ def list_announcements(semester: str) -> list[dict]:
                 func.max(ScoreRecord.points).label("max_pts"),
             )
             .filter(ScoreRecord.semester == semester,
-                    ScoreRecord.is_revoked.is_(False))
+                    ScoreRecord.is_revoked.is_(False),
+                    ScoreRecord.is_public.is_(True))
             .group_by(ScoreRecord.activity_name)
             .order_by(func.max(ScoreRecord.created_at).desc())
             .all())
@@ -47,6 +48,7 @@ def get_announcement_rows(semester: str, activity: str) -> list[tuple[ScoreRecor
             .join(Student, Student.id == ScoreRecord.student_id)
             .filter(ScoreRecord.semester == semester,
                     ScoreRecord.activity_name == activity,
-                    ScoreRecord.is_revoked.is_(False))
-            .order_by(ScoreRecord.points.desc(), Student.name.asc())
+                    ScoreRecord.is_revoked.is_(False),
+                    ScoreRecord.is_public.is_(True))
+            .order_by(Student.student_no.asc())
             .all())

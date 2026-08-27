@@ -1,14 +1,22 @@
 """Flask 应用工厂。"""
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any
+
 from flask import Flask, redirect, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import get_config
 from extensions import db, login_manager
+from services.database import initialize_database
 
 
-def create_app() -> Flask:
+def create_app(config_overrides: Mapping[str, Any] | None = None) -> Flask:
     app = Flask(__name__, instance_relative_config=False)
     app.config.from_object(get_config())
+    if config_overrides:
+        app.config.update(config_overrides)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     db.init_app(app)
@@ -42,33 +50,10 @@ def create_app() -> Flask:
         return None
 
     with app.app_context():
-        db.create_all()
-        _auto_migrate()
+        initialize_database()
 
     return app
 
-
-def _auto_migrate() -> None:
-    """轻量迁移：给已有 DB 按需补上新增列。
-    SQLite 专用：create_all 不会改已存在表，这里用 PRAGMA 检查并 ALTER。
-    """
-    from sqlalchemy import text
-
-    def ensure_column(table: str, col: str, col_def: str) -> None:
-        rows = db.session.execute(text(f"PRAGMA table_info({table})")).all()
-        existing = {r[1] for r in rows}
-        if col not in existing:
-            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}"))
-            db.session.commit()
-
-    try:
-        ensure_column("audit_log", "is_undone", "BOOLEAN NOT NULL DEFAULT 0")
-    except Exception:
-        db.session.rollback()
-
-
-app = create_app()
-
-
 if __name__ == "__main__":
+    app = create_app()
     app.run(host="127.0.0.1", port=5050, debug=True)

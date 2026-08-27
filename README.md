@@ -25,6 +25,9 @@ pip install -r requirements.txt
 # 启动
 python app.py
 # 浏览器打开 http://127.0.0.1:5050
+
+# 修改代码后的基础检查（使用临时数据库，不影响正式数据）
+python -m unittest discover -s tests
 ```
 
 首次访问会自动跳到 `/install`，设置主管账号 + 当前学期标识（如 `2026-spring`）。完成后用刚才的账号登录 `/admin/login`。
@@ -212,13 +215,20 @@ scoring-app/
 ├── blueprints/
 │   ├── install.py
 │   ├── student.py
-│   └── admin.py
+│   ├── admin.py            管理员认证、仪表盘、模块入口
+│   ├── admin_students.py   学生名单管理
+│   ├── admin_scores.py     上传审核、加分记录
+│   └── admin_system.py     导出、账号、日志、设置
 ├── services/
+│   ├── database.py        数据库初始化和兼容迁移
+│   ├── semesters.py       公共学期查询
 │   ├── parser.py          模糊表头解析
 │   ├── ranking.py         匿名排名 + 百分位 + 直方图
 │   ├── announcements.py   活动公示聚合
 │   ├── exporter.py        Excel 导出
 │   └── audit.py           审计日志
+├── tests/
+│   └── test_smoke.py      临时数据库冒烟测试
 ├── static/
 │   ├── css/app.css
 │   └── js/{toast,notifications}.js

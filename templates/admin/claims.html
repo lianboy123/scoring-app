@@ -1,0 +1,16 @@
+{% extends "admin/base.html" %}
+{% block title %}申报审核 · 加分管理{% endblock %}
+{% block content %}
+<header class="page-header"><div><div class="eyebrow">加分管理</div><h1 class="page-title">{{ category_label }}</h1><p class="page-sub">学生申报审核 · {{ '主管可查看全部' if current_user.is_super else '只显示分配给你的申报' }}</p></div></header>
+<div class="d-flex gap-2 mb-3">{% for key,label in [('pending','待审核'),('approved','已通过'),('rejected','已驳回')] %}<a class="btn btn-sm {{ 'btn-primary' if status == key else 'btn-outline-secondary' }}" href="{{ url_for('admin.claims', status=key, category=category) }}">{{ label }}</a>{% endfor %}</div>
+{% if claims %}<div class="claim-admin-list">{% for claim in claims %}
+<div class="card admin-card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between gap-3 flex-wrap"><div><h2 class="h6 mb-1">{{ claim.title }}</h2><div class="text-muted small">{{ claim.student.student_no }} · {{ claim.student.name }} · {{ category_map.get(claim.category, claim.category) }} · {{ claim.semester }}</div></div><span class="badge {{ 'bg-warning text-dark' if claim.status == 'pending' else ('bg-success' if claim.status == 'approved' else 'bg-secondary') }}">{{ {'pending':'待审核','approved':'已通过','rejected':'已驳回'}[claim.status] }}</span></div>
+  <a class="claim-proof-link" href="{{ url_for('student.claim_image', claim_id=claim.id) }}" target="_blank"><img src="{{ url_for('student.claim_image', claim_id=claim.id) }}" alt="申报证明"><span>查看原图</span></a>
+  {% if claim.status == 'pending' %}<form method="post" action="{{ url_for('admin.claim_review', claim_id=claim.id) }}" class="mt-3">
+    <div class="row g-2"><div class="col-md-3"><input class="form-control" type="number" name="points" step="0.01" min="0.01" max="99.99" placeholder="核定分值"></div><div class="col-md-5"><input class="form-control" name="review_note" maxlength="500" placeholder="审核备注（可选）"></div><div class="col-md-4 d-flex gap-2"><button class="btn btn-success" name="action" value="approve"><i class="bi bi-check2"></i> 通过</button><button class="btn btn-outline-danger" name="action" value="reject"><i class="bi bi-x-lg"></i> 驳回</button></div></div>
+    <label class="form-check-label mt-2"><input class="form-check-input me-1" type="checkbox" name="is_public" value="1" checked> 审核通过后公示这条加分</label>
+  </form>{% else %}<div class="mt-3 small">核定分值：<strong>{{ claim.awarded_points if claim.status == 'approved' else '—' }}</strong>{% if claim.review_note %} · 备注：{{ claim.review_note }}{% endif %}</div>{% endif %}
+</div></div>
+{% endfor %}</div>{% else %}<div class="card admin-card"><div class="empty-state"><div class="empty-emoji">📋</div><div class="text-muted">没有该状态的申报</div></div></div>{% endif %}
+{% endblock %}

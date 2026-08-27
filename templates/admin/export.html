@@ -1,13 +1,13 @@
 {% extends "admin/base.html" %}
-{% block title %}导出 / 备份 · 加分管理{% endblock %}
+{% block title %}导出备份 · 加分管理{% endblock %}
 
 {% block content %}
 <header class="page-header">
-    <h1 class="page-title">导出 / 备份</h1>
+    <h1 class="page-title">导出备份</h1>
 </header>
 
 <div class="row g-3">
-    <div class="col-md-6">
+    <div class="col-md-8">
         <div class="card admin-card">
             <div class="card-body">
                 <h2 class="h6">按学期导出 Excel</h2>
@@ -20,15 +20,6 @@
                     </select>
                     <button class="btn btn-primary"><i class="bi bi-file-earmark-excel"></i> 下载 Excel</button>
                 </form>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card admin-card">
-            <div class="card-body">
-                <h2 class="h6">备份数据库</h2>
-                <p class="text-muted small">下载 <code>scoring.db</code> 原始文件，离线保存。建议每周一次。</p>
-                <a href="{{ url_for('admin.export_db') }}" class="btn btn-outline-primary"><i class="bi bi-database-down"></i> 下载 DB 文件</a>
             </div>
         </div>
     </div>

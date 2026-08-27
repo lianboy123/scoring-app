@@ -14,6 +14,39 @@ from extensions import db
 from models import ScoreRecord, Student
 
 
+def build_full_roster(semester: str) -> dict:
+    """构造全员加分透视表：学生为行、活动为列。"""
+    students = Student.query.order_by(Student.student_no.asc()).all()
+    activity_rows = (db.session.query(
+                        ScoreRecord.activity_name,
+                        func.min(ScoreRecord.created_at).label("first_at"))
+                     .filter(ScoreRecord.semester == semester,
+                             ScoreRecord.is_revoked.is_(False))
+                     .group_by(ScoreRecord.activity_name)
+                     .order_by(func.min(ScoreRecord.created_at).asc())
+                     .all())
+    activities = [row[0] for row in activity_rows]
+
+    records = (ScoreRecord.query
+               .filter(ScoreRecord.semester == semester,
+                       ScoreRecord.is_revoked.is_(False))
+               .all())
+    pivot: dict[int, dict[str, Decimal]] = {}
+    totals: dict[int, Decimal] = {}
+    for record in records:
+        pivot.setdefault(record.student_id, {})[record.activity_name] = record.points
+        totals[record.student_id] = (
+            totals.get(record.student_id, Decimal(0)) + record.points
+        )
+
+    return {
+        "roster_students": students,
+        "roster_activities": activities,
+        "roster_pivot": pivot,
+        "roster_totals": totals,
+    }
+
+
 def compute_totals(semester: str) -> list[tuple[int, Decimal]]:
     """返回 [(student_id, total_points)]，按总分降序。
 

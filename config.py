@@ -22,6 +22,7 @@ class BaseConfig:
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 2  # 管理员 2 小时
 
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 单次上传 ≤ 16MB（学生名单 / 加分 Excel 足够）
+    CLAIM_UPLOAD_DIR = str(INSTANCE_DIR / "claim_images")
 
     DEFAULT_SEMESTER = os.environ.get("SCORING_DEFAULT_SEMESTER", "2026-spring")
 

@@ -1,29 +1,51 @@
 {% extends "student/_layout.html" %}
 {% block title %}登录 · 活动加分系统{% endblock %}
+{% block body_class %}auth-body{% endblock %}
 
 {% block content %}
-<div class="install-wrap">
-    <div class="install-card shadow-sm">
-        <div class="text-center mb-4">
-            <div class="brand-badge">活动加分</div>
-            <h1 class="h4 mt-3 mb-1">学生登录</h1>
-            <p class="text-muted small mb-0">用学号 + 姓名进入，无需密码</p>
+<main class="auth-page">
+    <section class="auth-intro" aria-labelledby="auth-system-title">
+        <div class="auth-school">数学与统计学院</div>
+        <h1 id="auth-system-title">学生综合素质<br>加分管理系统</h1>
+        <div class="auth-motto">
+            <img src="{{ url_for('static', filename='img/school-motto.png') }}"
+                 alt="进德修业，志道鼎新">
         </div>
-        <form method="post" autocomplete="off">
-            <div class="mb-3">
-                <label class="form-label">学号</label>
-                <input type="text" name="student_no" class="form-control form-control-lg"
-                       inputmode="numeric" required autofocus>
+        <p class="auth-intro-copy">记录每一次参与，也看见每一份成长。</p>
+    </section>
+
+    <section class="auth-card-wrap" aria-label="学生登录">
+        <div class="auth-card">
+            <div class="auth-card-head">
+                <div class="auth-mark" aria-hidden="true"><span></span></div>
+                <div>
+                    <div class="auth-eyebrow">STUDENT PORTAL</div>
+                    <h2>学生登录</h2>
+                    <p>使用学号和姓名进入，无需密码</p>
+                </div>
             </div>
-            <div class="mb-4">
-                <label class="form-label">姓名</label>
-                <input type="text" name="name" class="form-control form-control-lg" required>
+            <form method="post" autocomplete="off">
+                <div class="mb-3">
+                    <label class="form-label" for="student-no">学号</label>
+                    <input id="student-no" type="text" name="student_no"
+                           class="form-control form-control-lg auth-input"
+                           inputmode="numeric" autocomplete="username"
+                           placeholder="请输入学号" required autofocus>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label" for="student-name">姓名</label>
+                    <input id="student-name" type="text" name="name"
+                           class="form-control form-control-lg auth-input"
+                           autocomplete="name" placeholder="请输入姓名" required>
+                </div>
+                <button class="btn btn-primary w-100 btn-lg auth-submit" type="submit">进入系统</button>
+            </form>
+            <div class="auth-switch">
+                <span>后台工作人员</span>
+                <a href="{{ url_for('admin.login') }}">管理员入口 →</a>
             </div>
-            <button class="btn btn-primary w-100 btn-lg" type="submit">进入</button>
-        </form>
-        <div class="text-center mt-3">
-            <a class="small text-muted" href="{{ url_for('admin.login') }}">管理员入口 →</a>
         </div>
-    </div>
-</div>
+        <p class="auth-footer">数学与统计学院 · 学生综合素质加分管理</p>
+    </section>
+</main>
 {% endblock %}

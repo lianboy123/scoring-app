@@ -1,28 +1,50 @@
 {% extends "base.html" %}
 {% block title %}管理员登录 · 活动加分系统{% endblock %}
+{% block body_class %}auth-body{% endblock %}
 
 {% block content %}
-<div class="install-wrap">
-    <div class="install-card shadow-sm">
-        <div class="text-center mb-4">
-            <div class="brand-badge">管理后台</div>
-            <h1 class="h4 mt-3 mb-1">管理员登录</h1>
-            <p class="text-muted small mb-0">学生端无需密码，本入口仅供管理员</p>
+<main class="auth-page">
+    <section class="auth-intro" aria-labelledby="auth-system-title">
+        <div class="auth-school">数学与统计学院</div>
+        <h1 id="auth-system-title">学生综合素质<br>加分管理系统</h1>
+        <div class="auth-motto">
+            <img src="{{ url_for('static', filename='img/school-motto.png') }}"
+                 alt="进德修业，志道鼎新">
         </div>
-        <form method="post" autocomplete="off">
-            <div class="mb-3">
-                <label class="form-label">用户名</label>
-                <input type="text" name="username" class="form-control" required autofocus>
+        <p class="auth-intro-copy">规范管理每一条记录，清晰呈现每一份成长。</p>
+    </section>
+
+    <section class="auth-card-wrap" aria-label="管理员登录">
+        <div class="auth-card">
+            <div class="auth-card-head">
+                <div class="auth-mark" aria-hidden="true"><span></span></div>
+                <div>
+                    <div class="auth-eyebrow">ADMIN CONSOLE</div>
+                    <h2>管理员登录</h2>
+                    <p>本入口仅供授权管理员使用</p>
+                </div>
             </div>
-            <div class="mb-4">
-                <label class="form-label">密码</label>
-                <input type="password" name="password" class="form-control" required>
+            <form method="post" autocomplete="off">
+                <div class="mb-3">
+                    <label class="form-label" for="admin-username">用户名</label>
+                    <input id="admin-username" type="text" name="username"
+                           class="form-control form-control-lg auth-input"
+                           autocomplete="username" placeholder="请输入用户名" required autofocus>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label" for="admin-password">密码</label>
+                    <input id="admin-password" type="password" name="password"
+                           class="form-control form-control-lg auth-input"
+                           autocomplete="current-password" placeholder="请输入密码" required>
+                </div>
+                <button class="btn btn-primary w-100 btn-lg auth-submit" type="submit">登录后台</button>
+            </form>
+            <div class="auth-switch">
+                <span>我是学生</span>
+                <a href="{{ url_for('student.login') }}">学生入口 →</a>
             </div>
-            <button class="btn btn-primary w-100" type="submit">登录</button>
-        </form>
-        <div class="text-center mt-3">
-            <a class="small text-muted" href="{{ url_for('student.login') }}">学生入口 →</a>
         </div>
-    </div>
-</div>
+        <p class="auth-footer">数学与统计学院 · 学生综合素质加分管理</p>
+    </section>
+</main>
 {% endblock %}

@@ -1,0 +1,6 @@
+{% extends "admin/base.html" %}
+{% block title %}上传文件 · 行为规范{% endblock %}
+{% block content %}
+<header class="page-header"><div><div class="eyebrow">行为规范</div><h1 class="page-title">上传文件</h1></div><a class="btn btn-outline-secondary" href="{{ url_for('admin.bulk_add') }}"><i class="bi bi-arrow-left"></i> 返回批量录入</a></header>
+<div class="card admin-card"><div class="card-body empty-state py-5"><div class="empty-emoji">📤</div><h2 class="h5">功能待完善</h2><p class="text-muted">按照当前规划，先保留入口，暂不处理上传文件。</p><button class="btn btn-primary" disabled><i class="bi bi-cloud-upload"></i> 选择文件</button></div></div>
+{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "student/_layout.html" %}
+{% block title %}{{ student.name }} · {{ category_label }}{% endblock %}
+{% block content %}
+<header class="mobile-header"><div><div class="hello">{{ student.name }}</div><div class="muted small">{{ student.student_no }} · {{ sem }}</div></div><a href="{{ url_for('student.ranking') }}" class="text-muted small"><i class="bi bi-arrow-left"></i> 返回公示</a></header>
+<section class="px-3 mt-2"><div class="detail-category-head"><span>{{ category_label }}</span><strong>{{ '%+.1f' % ((records|sum(attribute='points'))|float) }}</strong></div>
+{% if records %}<div class="record-list">{% for record in records %}<div class="record-item"><div><div class="r-name">{{ record.activity_name }}</div><div class="r-meta">{{ record.created_at.strftime('%Y-%m-%d') }}</div></div><div class="r-points">{{ '%+.1f' % (record.points|float) }}</div></div>{% endfor %}</div>{% else %}<div class="empty-state"><div class="empty-emoji">📋</div><div class="text-muted">该类别暂无公示的加分明细</div></div>{% endif %}
+</section>
+{% endblock %}

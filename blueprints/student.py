@@ -1,41 +1,31 @@
 """学生端蓝图。
 
 学号+姓名免密登录，会话仅维持当前浏览器进程。
-3 个底部 Tab 页面：首页 / 排名 / 我。
+3 个底部 Tab 页面：首页 / 公示 / 申报。
 """
 from __future__ import annotations
 
 from decimal import Decimal
 from functools import wraps
+from pathlib import Path
+from uuid import uuid4
 
 from flask import (
-    Blueprint, current_app, flash, jsonify, redirect, render_template,
-    request, session, url_for,
+    Blueprint, abort, current_app, flash, jsonify, redirect, render_template,
+    request, send_from_directory, session, url_for,
 )
+from flask_login import current_user
 from sqlalchemy import func
+from werkzeug.utils import secure_filename
 
 from extensions import db
-from models import Notification, ScoreRecord, Setting, Student
+from models import Admin, AssignmentRule, Claim, Notification, ScoreRecord, Student
+from services.announcements import get_announcement_rows, list_announcements
+from services.categories import CATEGORY_MAP, CLAIMABLE_CATEGORIES, SCORING_CATEGORIES
+from services.semesters import current_semester, semesters_for_student
 
 
 bp = Blueprint("student", __name__)
-
-
-# ---------- 工具 ----------
-
-def current_semester() -> str:
-    return Setting.get("current_semester", current_app.config["DEFAULT_SEMESTER"])
-
-
-def all_semesters_for_student(sid: int) -> list[str]:
-    rows = (db.session.query(ScoreRecord.semester)
-            .filter(ScoreRecord.student_id == sid)
-            .distinct().order_by(ScoreRecord.semester.desc()).all())
-    sems = [r[0] for r in rows]
-    cur = current_semester()
-    if cur and cur not in sems:
-        sems.insert(0, cur)
-    return sems
 
 
 def get_current_student() -> Student | None:
@@ -99,37 +89,34 @@ def logout():
 def home():
     s = get_current_student()
     sem = current_semester()
-    total = (db.session.query(func.coalesce(func.sum(ScoreRecord.points), 0))
-             .filter(ScoreRecord.student_id == s.id,
-                     ScoreRecord.semester == sem,
-                     ScoreRecord.is_revoked.is_(False))
-             .scalar()) or 0
-    record_count = (db.session.query(func.count(ScoreRecord.id))
-                    .filter(ScoreRecord.student_id == s.id,
-                            ScoreRecord.semester == sem,
-                            ScoreRecord.is_revoked.is_(False)).scalar()) or 0
-    recent = (ScoreRecord.query
-              .filter_by(student_id=s.id, semester=sem, is_revoked=False)
-              .order_by(ScoreRecord.created_at.desc())
-              .limit(5).all())
-
-    from services.announcements import list_announcements
+    rows = (db.session.query(ScoreRecord.category,
+                             func.coalesce(func.sum(ScoreRecord.points), 0))
+            .filter(ScoreRecord.student_id == s.id,
+                    ScoreRecord.semester == sem,
+                    ScoreRecord.is_revoked.is_(False))
+            .group_by(ScoreRecord.category).all())
+    totals_map = {category: Decimal(total or 0) for category, total in rows}
+    category_totals = [
+        {**item, "points": totals_map.get(item["slug"], Decimal("0"))}
+        for item in SCORING_CATEGORIES
+    ]
+    total = sum((item["points"] for item in category_totals), Decimal("0"))
     latest_announcements = list_announcements(sem)[:3]
+    notifications = (Notification.query.filter_by(student_id=s.id)
+                     .order_by(Notification.created_at.desc()).limit(5).all())
 
     return render_template("student/home.html",
-                           total=total, record_count=record_count,
-                           recent=recent, sem=sem,
-                           latest_announcements=latest_announcements)
+                           total=total, category_totals=category_totals, sem=sem,
+                           latest_announcements=latest_announcements,
+                           notifications=notifications)
 
 
 @bp.route("/announcements")
 @student_required
 def announcements():
     """活动加分公示：按 (学期, 活动名称) 聚合。"""
-    from services.announcements import list_announcements, get_announcement_rows
-
     s = get_current_student()
-    sems = all_semesters_for_student(s.id) or [current_semester()]
+    sems = semesters_for_student(s.id)
     sem = request.args.get("semester") or sems[0]
 
     summaries = list_announcements(sem)
@@ -146,68 +133,101 @@ def announcements():
 @bp.route("/ranking")
 @student_required
 def ranking():
-    from services.ranking import build_ranking_view
-
-    s = get_current_student()
     sem = current_semester()
-    view = build_ranking_view(sem, s.id)
-    roster = _build_full_roster(sem)
-    return render_template("student/ranking.html", sem=sem, **view, **roster)
-
-
-def _build_full_roster(sem: str) -> dict:
-    """构造「全员加分透视表」数据：行=学生（学号升序），列=活动（最早录入升序）。"""
-    from decimal import Decimal
-    from sqlalchemy import func as _func
-
     students = Student.query.order_by(Student.student_no.asc()).all()
-
-    activity_rows = (db.session.query(
-                        ScoreRecord.activity_name,
-                        _func.min(ScoreRecord.created_at).label("first_at"))
-                     .filter(ScoreRecord.semester == sem,
-                             ScoreRecord.is_revoked.is_(False))
-                     .group_by(ScoreRecord.activity_name)
-                     .order_by(_func.min(ScoreRecord.created_at).asc())
-                     .all())
-    activities = [r[0] for r in activity_rows]
-
     records = (ScoreRecord.query
-               .filter(ScoreRecord.semester == sem,
-                       ScoreRecord.is_revoked.is_(False))
-               .all())
-    pivot: dict[int, dict[str, Decimal]] = {}
-    totals: dict[int, Decimal] = {}
-    for r in records:
-        pivot.setdefault(r.student_id, {})[r.activity_name] = r.points
-        totals[r.student_id] = totals.get(r.student_id, Decimal(0)) + r.points
-
-    return {
-        "roster_students": students,
-        "roster_activities": activities,
-        "roster_pivot": pivot,
-        "roster_totals": totals,
+               .filter_by(semester=sem, is_revoked=False, is_public=True).all())
+    totals: dict[int, dict[str, Decimal]] = {}
+    for record in records:
+        student_totals = totals.setdefault(record.student_id, {})
+        student_totals[record.category] = (
+            student_totals.get(record.category, Decimal("0")) + record.points
+        )
+    grand_totals = {
+        sid: sum(category_values.values(), Decimal("0"))
+        for sid, category_values in totals.items()
     }
+    return render_template("student/public.html", sem=sem, students=students,
+                           categories=SCORING_CATEGORIES, totals=totals,
+                           grand_totals=grand_totals)
+
+
+@bp.route("/public/student/<int:student_id>/<category>")
+@student_required
+def public_student_category(student_id: int, category: str):
+    student = db.session.get(Student, student_id) or abort(404)
+    if category not in CATEGORY_MAP:
+        abort(404)
+    sem = current_semester()
+    records = (ScoreRecord.query
+               .filter_by(student_id=student.id, semester=sem,
+                          category=category, is_revoked=False, is_public=True)
+               .order_by(ScoreRecord.created_at.desc()).all())
+    return render_template("student/public_detail.html", student=student,
+                           category=category, category_label=CATEGORY_MAP[category],
+                           records=records, sem=sem)
+
+
+def _assigned_admin(student_no: str) -> Admin | None:
+    rules = AssignmentRule.query.order_by(AssignmentRule.start_no.asc()).all()
+    for rule in rules:
+        if rule.start_no <= student_no <= rule.end_no:
+            return rule.admin
+    return Admin.query.filter_by(is_super=True).order_by(Admin.id.asc()).first()
+
+
+@bp.route("/claims", methods=["GET", "POST"])
+@student_required
+def claims():
+    student = get_current_student()
+    if request.method == "POST":
+        category = (request.form.get("category") or "").strip()
+        title = (request.form.get("title") or "").strip()[:255]
+        proof = request.files.get("proof")
+        allowed = {"jpg", "jpeg", "png", "webp"}
+        ext = secure_filename(proof.filename).rsplit(".", 1)[-1].lower() if proof and proof.filename and "." in proof.filename else ""
+        if category not in {item["slug"] for item in CLAIMABLE_CATEGORIES}:
+            flash("请选择可申报的加分类别", "warning")
+        elif not title:
+            flash("请填写申报项目名称", "warning")
+        elif not proof or ext not in allowed or not (proof.mimetype or "").startswith("image/"):
+            flash("证明材料只支持 JPG、PNG 或 WEBP 图片", "warning")
+        else:
+            upload_dir = Path(current_app.config["CLAIM_UPLOAD_DIR"])
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            filename = f"{uuid4().hex}.{ext}"
+            proof.save(upload_dir / filename)
+            assigned = _assigned_admin(student.student_no)
+            claim = Claim(student_id=student.id, category=category, title=title,
+                          image_filename=filename, semester=current_semester(),
+                          assigned_admin_id=assigned.id if assigned else None)
+            db.session.add(claim)
+            db.session.commit()
+            flash("申报已提交，审核结果会通过通知告诉你", "success")
+            return redirect(url_for("student.claims"))
+    items = (Claim.query.filter_by(student_id=student.id)
+             .order_by(Claim.created_at.desc()).all())
+    return render_template("student/claims.html", claims=items,
+                           categories=CLAIMABLE_CATEGORIES,
+                           category_map=CATEGORY_MAP)
+
+
+@bp.route("/claims/<int:claim_id>/image")
+def claim_image(claim_id: int):
+    claim = db.session.get(Claim, claim_id) or abort(404)
+    student = get_current_student()
+    admin_allowed = (current_user.is_authenticated and
+                     (current_user.is_super or claim.assigned_admin_id == current_user.id))
+    if not admin_allowed and (not student or claim.student_id != student.id):
+        abort(403)
+    return send_from_directory(current_app.config["CLAIM_UPLOAD_DIR"],
+                               claim.image_filename)
 
 
 @bp.route("/me")
 @student_required
 def me():
-    s = get_current_student()
-    sems = all_semesters_for_student(s.id) or [current_semester()]
-    sem = request.args.get("semester") or sems[0]
-    records = (ScoreRecord.query
-               .filter_by(student_id=s.id, semester=sem, is_revoked=False)
-               .order_by(ScoreRecord.created_at.desc()).all())
-    total = sum((r.points for r in records), Decimal("0"))
-    notifications = (Notification.query
-                     .filter_by(student_id=s.id)
-                     .order_by(Notification.created_at.desc())
-                     .limit(50).all())
-    return render_template("student/me.html",
-                           records=records, total=total,
-                           notifications=notifications,
-                           sem=sem, semesters=sems)
+    return redirect(url_for("student.home"))
 
 
 @bp.route("/notifications/read", methods=["POST"])

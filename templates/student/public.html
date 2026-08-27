@@ -1,0 +1,16 @@
+{% extends "student/_layout.html" %}
+{% block title %}公示 · 活动加分{% endblock %}
+{% block content %}
+<header class="mobile-header"><div><div class="hello">综合素质加分公示</div><div class="muted small">{{ sem }} · 按学号排列 · 无排名</div></div></header>
+<section class="public-roster-wrap">
+  <div class="public-table-scroll"><table class="public-score-table">
+    <thead><tr><th class="public-sticky-no">学号</th><th class="public-sticky-name">姓名</th>{% for category in categories %}<th>{{ category.label }}</th>{% endfor %}<th class="public-total">总分</th></tr></thead>
+    <tbody>{% for student in students %}{% set row = totals.get(student.id, {}) %}<tr class="{{ 'is-current' if student.id == current_student.id }}">
+      <td class="public-sticky-no"><code>{{ student.student_no }}</code></td><td class="public-sticky-name">{{ student.name }}{% if student.id == current_student.id %}<span class="you-mini">你</span>{% endif %}</td>
+      {% for category in categories %}{% set points = row.get(category.slug, 0) %}<td><a class="category-detail-link" href="{{ url_for('student.public_student_category', student_id=student.id, category=category.slug) }}">{{ '%+.1f' % (points|float) if points else '0.0' }} <i class="bi bi-chevron-right"></i></a></td>{% endfor %}
+      <td class="public-total">{{ '%.1f' % (grand_totals.get(student.id, 0)|float) }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="text-muted small mt-2">只展示管理员选择公示的记录。表格可横向滑动，点击分数可查看该类活动明细。</p>
+</section>
+{% endblock %}

@@ -1,6 +1,6 @@
 """数据模型。
 
-7 张表：Student / Admin / UploadBatch / ScoreRecord / Notification / AuditLog / Setting。
+核心表：学生、管理员、加分记录、申报、分配规则、通知和设置。
 """
 from datetime import datetime
 from decimal import Decimal
@@ -79,6 +79,8 @@ class ScoreRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("student.id"), nullable=False, index=True)
     activity_name = db.Column(db.String(255), nullable=False)
+    category = db.Column(db.String(32), nullable=False, default="behavior", index=True)
+    is_public = db.Column(db.Boolean, default=True, nullable=False, index=True)
     points = db.Column(db.Numeric(5, 2), nullable=False)
     semester = db.Column(db.String(32), nullable=False, index=True)
     batch_id = db.Column(db.Integer, db.ForeignKey("upload_batch.id"))
@@ -104,6 +106,44 @@ class Notification(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     student = db.relationship("Student", back_populates="notifications")
+
+
+class Claim(db.Model):
+    """学生对除行为规范外的类别进行加分申报。"""
+    __tablename__ = "claim"
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("student.id"), nullable=False, index=True)
+    category = db.Column(db.String(32), nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=False)
+    image_filename = db.Column(db.String(255), nullable=False)
+    semester = db.Column(db.String(32), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default="pending", index=True)
+    assigned_admin_id = db.Column(db.Integer, db.ForeignKey("admin.id"), index=True)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey("admin.id"))
+    awarded_points = db.Column(db.Numeric(5, 2))
+    review_note = db.Column(db.String(500))
+    score_record_id = db.Column(db.Integer, db.ForeignKey("score_record.id"))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    reviewed_at = db.Column(db.DateTime)
+
+    student = db.relationship("Student")
+    assigned_admin = db.relationship("Admin", foreign_keys=[assigned_admin_id])
+    reviewer = db.relationship("Admin", foreign_keys=[reviewer_id])
+    score_record = db.relationship("ScoreRecord")
+
+
+class AssignmentRule(db.Model):
+    """按学号字符串区间分配申报审核员。"""
+    __tablename__ = "assignment_rule"
+
+    id = db.Column(db.Integer, primary_key=True)
+    start_no = db.Column(db.String(32), nullable=False)
+    end_no = db.Column(db.String(32), nullable=False)
+    admin_id = db.Column(db.Integer, db.ForeignKey("admin.id"), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    admin = db.relationship("Admin")
 
 
 class AuditLog(db.Model):

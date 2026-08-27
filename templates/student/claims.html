@@ -1,0 +1,15 @@
+{% extends "student/_layout.html" %}
+{% block title %}加分申报 · 活动加分{% endblock %}
+{% block content %}
+<header class="mobile-header"><div><div class="hello">加分申报</div><div class="muted small">上传图片证明，由负责管理员审核</div></div></header>
+<section class="px-3 mt-2">
+  <form method="post" enctype="multipart/form-data" class="claim-form-card">
+    <div class="mb-3"><label class="form-label">申报类别</label><select class="form-select" name="category" required><option value="">请选择</option>{% for category in categories %}<option value="{{ category.slug }}">{{ category.label }}</option>{% endfor %}</select></div>
+    <div class="mb-3"><label class="form-label">申报项目名称</label><input class="form-control" name="title" maxlength="255" required placeholder="例如：省级数学建模竞赛二等奖"></div>
+    <div class="mb-3"><label class="form-label">证明材料</label><input class="form-control" type="file" name="proof" accept="image/jpeg,image/png,image/webp" required><div class="form-text">仅支持 JPG、PNG、WEBP 图片，单次最大 16MB。</div></div>
+    <button class="btn btn-primary w-100"><i class="bi bi-send"></i> 提交申报</button>
+  </form>
+  <h2 class="h6 text-muted mt-4 mb-2">我的申报</h2>
+  {% if claims %}<div class="student-claim-list">{% for claim in claims %}<div class="student-claim-card"><div class="d-flex justify-content-between gap-2"><div><div class="fw-semibold">{{ claim.title }}</div><div class="small text-muted">{{ category_map.get(claim.category, claim.category) }} · {{ claim.created_at.strftime('%Y-%m-%d') }}</div></div><span class="claim-status status-{{ claim.status }}">{{ {'pending':'待审核','approved':'已通过','rejected':'已驳回'}[claim.status] }}</span></div>{% if claim.status == 'approved' %}<div class="claim-result">核定 <strong>+{{ claim.awarded_points }}</strong> 分</div>{% elif claim.review_note %}<div class="claim-result text-muted">审核备注：{{ claim.review_note }}</div>{% endif %}</div>{% endfor %}</div>{% else %}<div class="empty-state py-3"><div class="text-muted small">还没有提交过申报</div></div>{% endif %}
+</section>
+{% endblock %}

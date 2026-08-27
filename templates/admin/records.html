@@ -5,15 +5,12 @@
 <header class="page-header">
     <div>
         <h1 class="page-title">加分记录</h1>
-        <p class="page-sub">学期 {{ sem }}{% if show_revoked %} · 含已撤销{% endif %}</p>
+        <p class="page-sub">按活动名称展开查看参与同学和分值</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="{{ url_for('admin.bulk_add') }}" class="btn btn-outline-primary">
-            <i class="bi bi-collection"></i> 批量加分
+        <a href="{{ url_for('admin.bulk_add') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> 行为规范加分
         </a>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualAddModal">
-            <i class="bi bi-plus-lg"></i> 手动加分（单人）
-        </button>
     </div>
 </header>
 
@@ -23,7 +20,7 @@
         <option value="{{ s }}" {{ 'selected' if s == sem }}>{{ s }}</option>
         {% endfor %}
     </select>
-    <input type="text" class="form-control" name="q" value="{{ q }}" placeholder="搜索学号/姓名/活动" style="width:240px">
+    <input type="text" class="form-control" name="q" value="{{ q }}" placeholder="搜索活动名/学号/姓名" style="width:280px">
     <label class="form-check-label d-flex align-items-center gap-2">
         <input class="form-check-input" type="checkbox" name="revoked" value="1" {{ 'checked' if show_revoked }} onchange="this.form.submit()">
         显示已撤销
@@ -33,20 +30,25 @@
 
 <div class="card admin-card">
     <div class="card-body p-0">
-        {% if rows %}
+        {% if activity_groups %}
         <form method="post" action="{{ url_for('admin.records_bulk_delete') }}" id="bulkDeleteForm"
               onsubmit="return confirmBulkDelete(this);">
+        <div class="activity-record-list">
+        {% for group in activity_groups %}
+        <details class="activity-record-card" {% if q %}open{% endif %}>
+            <summary>
+                <span class="activity-summary-main"><i class="bi bi-chevron-right"></i> <strong>{{ group.name }}</strong></span>
+                <span class="activity-summary-meta">{{ group.rows|length }} 人 · 合计 {{ group.total }} 分</span>
+            </summary>
         <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
                 <thead><tr>
-                    <th style="width:36px">
-                        <input type="checkbox" class="form-check-input" id="checkAllRecords">
-                    </th>
-                    <th>学号</th><th>姓名</th><th>活动</th>
+                    <th style="width:36px"></th>
+                    <th>学号</th><th>姓名</th>
                     <th class="text-end">分值</th><th>录入时间</th><th>操作</th>
                 </tr></thead>
                 <tbody>
-                {% for rec, st in rows %}
+                {% for rec, st in group.rows %}
                 <tr class="{{ 'text-muted text-decoration-line-through' if rec.is_revoked }}">
                     <td>
                         <input type="checkbox" class="form-check-input rec-check"
@@ -54,8 +56,7 @@
                     </td>
                     <td><code>{{ st.student_no }}</code></td>
                     <td>{{ st.name }}</td>
-                    <td>{{ rec.activity_name }}</td>
-                    <td class="text-end">+{{ rec.points }}</td>
+                    <td class="text-end"><span class="{{ 'text-success' if rec.points >= 0 else 'text-danger' }}">{{ '+' if rec.points >= 0 }}{{ rec.points }}</span></td>
                     <td class="small">{{ rec.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>
                         {% if not rec.is_revoked %}
@@ -86,6 +87,9 @@
                 </tbody>
             </table>
         </div>
+        </details>
+        {% endfor %}
+        </div>
         <div class="bulk-action-bar" id="bulkActionBar" hidden>
             <span class="bulk-hint">已选 <strong id="bulkSelectedCount">0</strong> 条</span>
             <div class="ms-auto d-flex gap-2">
@@ -102,9 +106,7 @@
         <div class="empty-state p-5">
             <div class="empty-emoji">📭</div>
             <p class="text-muted">该学期暂无记录</p>
-            <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#manualAddModal">
-                <i class="bi bi-plus-lg"></i> 手动加一条
-            </button>
+            <a class="btn btn-primary mt-2" href="{{ url_for('admin.bulk_add') }}"><i class="bi bi-plus-lg"></i> 录入活动</a>
         </div>
         {% endif %}
     </div>
@@ -156,6 +158,13 @@
                  id="manualNotifyCheck" value="1" checked>
           <label for="manualNotifyCheck" class="form-check-label">
             <i class="bi bi-bell"></i> 发送通知给该学生
+          </label>
+        </div>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" name="is_public"
+                 id="manualPublicCheck" value="1" checked>
+          <label for="manualPublicCheck" class="form-check-label">
+            <i class="bi bi-megaphone"></i> 在学生端公示
           </label>
         </div>
       </div>
